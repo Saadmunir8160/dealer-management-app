@@ -46,8 +46,26 @@ export const orderApi = {
     }),
 
   updateStatus: ({ orderId, status }: UpdateOrderStatusRequest) =>
-    apiClient.put<ApiResponse<Order>>(ORDER_ENDPOINTS.STATUS(orderId), { status }),
+    apiClient.put<ApiResponse<Order>>(ORDER_ENDPOINTS.STATUS(orderId), {
+      status: toBackendOrderStatus(status),
+    }),
 
   cancel: (id: string) =>
-    apiClient.put<ApiResponse<Order>>(ORDER_ENDPOINTS.STATUS(id), { status: 'Cancelled' }),
+    apiClient.put<ApiResponse<Order>>(ORDER_ENDPOINTS.STATUS(id), {
+      // Backend OrderStatus.Cancelled = 7 (also accepts "Cancelled" with JsonStringEnumConverter)
+      status: 7,
+    }),
 };
+
+/** Map app status labels → backend OrderStatus enum values */
+function toBackendOrderStatus(status: UpdateOrderStatusRequest['status']): number {
+  const map: Record<UpdateOrderStatusRequest['status'], number> = {
+    Pending: 1,
+    Confirmed: 2,
+    Processing: 3,
+    Shipped: 4,
+    Delivered: 5,
+    Cancelled: 7,
+  };
+  return map[status] ?? 1;
+}

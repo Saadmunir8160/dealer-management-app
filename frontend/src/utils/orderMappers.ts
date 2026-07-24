@@ -1,6 +1,21 @@
-import { OrderSummary, OrderStatus, PaginatedResponse } from '@types';
+import { Order, OrderItem, OrderSummary, OrderStatus, PaginatedResponse } from '@types';
 
 /** Backend OrderDto (camelCase from ASP.NET) */
+interface BackendOrderItemDto {
+  id?: number;
+  Id?: number;
+  productId?: number;
+  ProductId?: number;
+  productName?: string;
+  ProductName?: string;
+  quantity?: number;
+  Quantity?: number;
+  unitPrice?: number;
+  UnitPrice?: number;
+  total?: number;
+  Total?: number;
+}
+
 interface BackendOrderDto {
   id?: number;
   Id?: number;
@@ -18,8 +33,8 @@ interface BackendOrderDto {
   Status?: string | number;
   shippingAddress?: string | null;
   ShippingAddress?: string | null;
-  items?: unknown[];
-  Items?: unknown[];
+  items?: BackendOrderItemDto[];
+  Items?: BackendOrderItemDto[];
   createdDate?: string;
   CreatedDate?: string;
 }
@@ -82,6 +97,39 @@ export const mapBackendOrderToSummary = (dto: BackendOrderDto): OrderSummary => 
     driver: null,
     vehicle: null,
     itemCount: Array.isArray(items) ? items.length : 0,
+  };
+};
+
+export const mapBackendOrderToDetail = (dto: BackendOrderDto | Record<string, unknown>): Order => {
+  const d = dto as BackendOrderDto;
+  const orderId = d.id ?? d.Id ?? 0;
+  const rawItems = d.items ?? d.Items ?? [];
+  const items: OrderItem[] = rawItems.map((item, index) => {
+    const quantity = Number(item.quantity ?? item.Quantity ?? 0);
+    const unitPrice = Number(item.unitPrice ?? item.UnitPrice ?? 0);
+    return {
+      orderItemId: item.id ?? item.Id ?? index + 1,
+      orderId,
+      productId: item.productId ?? item.ProductId ?? 0,
+      productName: item.productName ?? item.ProductName ?? '—',
+      quantity,
+      unitPrice,
+      totalPrice: Number(item.total ?? item.Total ?? quantity * unitPrice),
+    };
+  });
+
+  return {
+    orderId,
+    dealerId: d.dealerId ?? d.DealerId ?? 0,
+    dealerName: d.dealerName ?? d.DealerName ?? '—',
+    userId: 0,
+    salesPerson: '—',
+    orderDate: String(d.orderDate ?? d.OrderDate ?? d.createdDate ?? d.CreatedDate ?? new Date().toISOString()),
+    totalAmount: Number(d.totalAmount ?? d.TotalAmount ?? 0),
+    status: mapBackendStatus(d.status ?? d.Status),
+    couponNumber: d.orderNumber ?? d.OrderNumber,
+    deliveryArea: d.shippingAddress ?? d.ShippingAddress ?? null,
+    items,
   };
 };
 

@@ -8,7 +8,7 @@ import {
   PaginatedResponse,
 } from '@types';
 import { parseApiError } from '@utils/errorHandler';
-import { mapOrdersListResponse } from '@utils/orderMappers';
+import { mapBackendOrderToDetail, mapOrdersListResponse } from '@utils/orderMappers';
 import {
   mockGetOrders,
   mockGetOrderById,
@@ -61,7 +61,7 @@ export const OrderService = {
       }
       try {
         const response = await orderApi.getById(String(id));
-        return response.data.data;
+        return mapBackendOrderToDetail(response.data.data);
       } catch {
         const response = await mockGetOrderById(Number(id));
         return response.data;
@@ -80,7 +80,7 @@ export const OrderService = {
       }
       try {
         const response = await orderApi.create(payload);
-        return response.data.data;
+        return mapBackendOrderToDetail(response.data.data);
       } catch {
         // Keep create flow usable offline / when API schema differs
         const response = await mockCreateOrder(payload, userId);
@@ -98,8 +98,14 @@ export const OrderService = {
         const response = await mockUpdateOrderStatus(Number(id), 'Cancelled');
         return response.data;
       }
-      const response = await orderApi.cancel(String(id));
-      return response.data.data;
+      try {
+        const response = await orderApi.cancel(String(id));
+        return mapBackendOrderToDetail(response.data.data);
+      } catch {
+        // Orders created via offline/mock fallback live only in mock store
+        const response = await mockUpdateOrderStatus(Number(id), 'Cancelled');
+        return response.data;
+      }
     } catch (error) {
       throw parseApiError(error);
     }

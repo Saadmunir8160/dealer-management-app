@@ -2,7 +2,7 @@
   "expo": {
     "name": "UCIC Customer Portal",
     "slug": "ucic-customer-portal",
-    "version": "1.0.1",
+    "version": "1.0.4",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -21,7 +21,7 @@
     },
     "android": {
       "package": "com.ucic.customerportal",
-      "versionCode": 3,
+      "versionCode": 6,
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo-light.png",
         "backgroundColor": "#1E40AF"
