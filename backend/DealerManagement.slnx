@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DealerManagement.Api/DealerManagement.Api.csproj" />
+    <Project Path="src/DealerManagement.Application/DealerManagement.Application.csproj" />
+    <Project Path="src/DealerManagement.Domain/DealerManagement.Domain.csproj" />
+    <Project Path="src/DealerManagement.Infrastructure/DealerManagement.Infrastructure.csproj" />
+    <Project Path="src/DealerManagement.Persistence/DealerManagement.Persistence.csproj" />
+    <Project Path="src/DealerManagement.Shared/DealerManagement.Shared.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DealerManagement.Tests/DealerManagement.Tests.csproj" />
+  </Folder>
+</Solution>

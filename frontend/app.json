@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "UCIC Customer Portal",
+    "slug": "ucic-customer-portal",
+    "version": "1.0.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "icon": "./assets/logo-light.png",
+    "splash": {
+      "image": "./assets/logo-light.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1E40AF"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ucic.customerportal"
+    },
+    "android": {
+      "package": "com.ucic.customerportal",
+      "versionCode": 3,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logo-light.png",
+        "backgroundColor": "#1E40AF"
+      },
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ],
+      "usesCleartextTraffic": true
+    },
+    "plugins": [
+      "./plugins/withNetworkSecurityConfig.js",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ],
+    "web": {
+      "bundler": "metro"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "e5953b17-8a0f-42e3-9ae2-59b4b577ad6d"
+      }
+    },
+    "owner": "khanasad"
+  }
+}

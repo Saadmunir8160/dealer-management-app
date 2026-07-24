@@ -1,0 +1,16 @@
+# Dependencies
+**/node_modules/
+**/bin/
+**/obj/
+**/.expo/
+**/dist/
+**/.vs/
+**/*.user
+**/logs/
+**/.env
+**/.env.local
+frontend/.env
+*.apk
+*.aab
+.DS_Store
+Thumbs.db

@@ -1,0 +1,11 @@
+# Railway — https://docs.railway.com/guides/dockerfiles
+# Root of service should be `backend` folder (set Root Directory = backend in Railway UI)
+
+[build]
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/swagger/index.html"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

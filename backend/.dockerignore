@@ -1,0 +1,7 @@
+**/bin/
+**/obj/
+**/logs/
+**/.vs/
+**/*.user
+**/*.DotSettings.user
+**/node_modules/
