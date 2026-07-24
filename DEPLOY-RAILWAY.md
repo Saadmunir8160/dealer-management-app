@@ -3,6 +3,11 @@
 Railway new accounts often get **trial credits**. After credits end you may need a small paid plan.
 This uses the same Docker + Postgres setup already in the repo.
 
+> **Status (2026-07-24):** Railway account trial **expired**.  
+> New services / deploys fail until you activate **Hobby** (or higher) at https://railway.app  
+> Until then use **Cloudflare Tunnel** ([DEPLOY-TUNNEL.md](./DEPLOY-TUNNEL.md)) for Norway demo,  
+> or one-click **Render Blueprint**: [render.yaml](./render.yaml) → https://dashboard.render.com/select-repo?type=blueprint
+
 ---
 
 ## What is already ready in code
@@ -14,25 +19,20 @@ This uses the same Docker + Postgres setup already in the repo.
 ---
 
 ## Step 1 — GitHub (required)
-1. Create repo: https://github.com/new
-2. Push project:
+Repo already: https://github.com/Saadmunir8160/dealer-management-app
 
 ```powershell
 cd "C:\Users\hp\OneDrive\Desktop\Dealer Management App"
-git init
-git add .
-git commit -m "Deploy ready for Railway (Docker + Postgres)"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
 git push -u origin main
 ```
 
 ---
 
-## Step 2 — Railway account
+## Step 2 — Railway account + plan
 1. Open https://railway.app
 2. Login with **GitHub**
-3. New Project
+3. If trial expired → **Activate Hobby** (required for new deploys)
+4. New Project
 
 ---
 
@@ -82,8 +82,7 @@ Login test (`POST /api/auth/login`):
 ---
 
 ## Step 6 — App + client (after URL works)
-Tell the agent your Railway URL, then:
-1. Set `EXPO_PUBLIC_API_URL=https://something.up.railway.app`
+1. Set `EXPO_PUBLIC_API_URL=https://something.up.railway.app` in `.env` + `eas.json`
 2. New APK build (EAS)
 3. Send Expo Install link to Norway client
 
@@ -94,4 +93,6 @@ Tell the agent your Railway URL, then:
 - Railway: Postgres — automatic
 
 ## If Railway asks for payment
-Use **Oracle Cloud Always Free** VM instead (more setup). Ask the agent for Oracle steps if needed.
+1. Prefer activate **Hobby** on Railway (simplest for this repo).
+2. Or use **Render Blueprint** ([render.yaml](./render.yaml)) — free web + free Postgres (cold starts).
+3. Or **Cloudflare Tunnel** for short demos ([DEPLOY-TUNNEL.md](./DEPLOY-TUNNEL.md)) — PC must stay on.

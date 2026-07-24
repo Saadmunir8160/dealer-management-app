@@ -1,0 +1,39 @@
+# Render Blueprint — free alternative when Railway trial expires
+# Deploy: https://dashboard.render.com/select-repo?type=blueprint
+# Repo: Saadmunir8160/dealer-management-app  (this file at repo root)
+
+services:
+  - type: web
+    name: dealer-management-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: frankfurt
+    healthCheckPath: /swagger/index.html
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: DATABASE_PROVIDER
+        value: postgres
+      - key: ConnectionStrings__DefaultConnection
+        fromDatabase:
+          name: dealer-db
+          property: connectionString
+      - key: JwtSettings__Secret
+        generateValue: true
+      - key: JwtSettings__Issuer
+        value: DealerManagement.Api
+      - key: JwtSettings__Audience
+        value: DealerManagement.Client
+      - key: JwtSettings__ExpirationMinutes
+        value: "60"
+      - key: JwtSettings__RefreshTokenExpirationDays
+        value: "7"
+
+databases:
+  - name: dealer-db
+    plan: free
+    region: frankfurt
+    databaseName: dealermanagement
+    user: dealer

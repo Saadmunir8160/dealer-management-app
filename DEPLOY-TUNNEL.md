@@ -6,8 +6,15 @@
 - Current public URL (changes if you restart quick tunnel):
 
 ```text
-https://indicator-hansen-slot-fighters.trycloudflare.com
+https://profits-hampton-quite-instructions.trycloudflare.com
 ```
+
+## Norway client (when Railway trial expired)
+1. Keep **dotnet run** + **cloudflared** running on this PC (do not close / sleep)
+2. APK must use the **exact** URL above in `EXPO_PUBLIC_API_URL`
+3. Client installs Expo **Install** link (works from Norway)
+4. Login: `admin` / `Admin@123`
+5. For always-on (PC off OK): activate Railway Hobby → see [DEPLOY-RAILWAY.md](./DEPLOY-RAILWAY.md)
 
 ## Client test checklist
 1. Keep **dotnet run** running
