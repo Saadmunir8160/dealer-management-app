@@ -1,4 +1,7 @@
 using DealerManagement.Domain.Entities.Auth;
+using DealerManagement.Domain.Entities.Dealer;
+using DealerManagement.Domain.Entities.Product;
+using DealerManagement.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -27,6 +30,131 @@ public static class DatabaseInitializer
         }
 
         await EnsureAdminAsync(db, logger, ct);
+        await EnsureCatalogAsync(db, logger, ct);
+    }
+
+    private static async Task EnsureCatalogAsync(AppDbContext db, ILogger logger, CancellationToken ct)
+    {
+        // Categories + brands first (products need CategoryId)
+        if (!await db.Categories.AnyAsync(ct))
+        {
+            db.Categories.Add(new Category
+            {
+                CategoryName = "Building Materials",
+                Description = "Construction supplies",
+                SortOrder = 1,
+                IsActive = true
+            });
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("Seeded default category");
+        }
+
+        if (!await db.Brands.AnyAsync(ct))
+        {
+            db.Brands.Add(new Brand
+            {
+                BrandName = "UCIC",
+                Description = "Default brand",
+                IsActive = true
+            });
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("Seeded default brand");
+        }
+
+        var categoryId = await db.Categories.Select(c => c.Id).FirstAsync(ct);
+        var brandId = await db.Brands.Select(b => b.Id).FirstAsync(ct);
+
+        if (!await db.Products.AnyAsync(ct))
+        {
+            var products = new (string Code, string Name, string Sku, decimal Price)[]
+            {
+                ("PRD-CEM", "Cement Bag", "CB001", 1200m),
+                ("PRD-STL", "Steel Rod", "SR001", 2500m),
+                ("PRD-BRK", "Bricks", "BR001", 18m),
+                ("PRD-SND", "Sand (per cubic ft)", "SD001", 150m),
+                ("PRD-GRV", "Gravel (per cubic ft)", "GR001", 200m),
+                ("PRD-PNT", "Paint (20L)", "PT001", 3500m),
+                ("PRD-PVC", "PVC Pipe (per meter)", "PV001", 450m),
+            };
+
+            foreach (var p in products)
+            {
+                db.Products.Add(new Product
+                {
+                    ProductCode = p.Code,
+                    ProductName = p.Name,
+                    SKU = p.Sku,
+                    UnitPrice = p.Price,
+                    CostPrice = Math.Round(p.Price * 0.7m, 2),
+                    CategoryId = categoryId,
+                    BrandId = brandId,
+                    UnitOfMeasure = "Unit",
+                    TaxRate = 0,
+                    MinOrderQuantity = 1,
+                    MaxOrderQuantity = 100000,
+                    IsActive = true
+                });
+            }
+
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("Seeded {Count} products", products.Length);
+        }
+
+        if (!await db.Dealers.AnyAsync(ct))
+        {
+            var dealers = new[]
+            {
+                new { Code = "DLR-ABC", Name = "ABC Traders", Contact = "Ahmed Ali", Phone = "03001111111", Email = "abc@gmail.com", City = "Lahore", Area = "Main Road, Block 5" },
+                new { Code = "DLR-XYZ", Name = "XYZ Traders", Contact = "Ali Khan", Phone = "03002222222", Email = "xyz@gmail.com", City = "Karachi", Area = "Mall Road, Saddar" },
+                new { Code = "DLR-ANR", Name = "Al-Noor Builders Supply", Contact = "Usman Tariq", Phone = "03111234567", Email = "alnoor@gmail.com", City = "Islamabad", Area = "GT Road, Sector G-9" },
+                new { Code = "DLR-PKT", Name = "Pak Steel Distributors", Contact = "Bilal Hassan", Phone = "03219876543", Email = "paksteel@gmail.com", City = "Faisalabad", Area = "Industrial Estate" },
+                new { Code = "DLR-SRN", Name = "Sunrise Building Supplies", Contact = "Sara Ahmed", Phone = "03335554433", Email = "sunrise@gmail.com", City = "Lahore", Area = "Raiwind Road" },
+            };
+
+            foreach (var d in dealers)
+            {
+                var dealer = new Dealer
+                {
+                    DealerCode = d.Code,
+                    DealerName = d.Name,
+                    ContactPerson = d.Contact,
+                    Phone = d.Phone,
+                    Mobile = d.Phone,
+                    Email = d.Email,
+                    DealerType = DealerType.Authorized,
+                    Status = DealerStatus.Active,
+                    CreditLimit = 500000,
+                    PaymentTermsDays = 30,
+                    IsActive = true,
+                    Notes = d.Area
+                };
+
+                dealer.Addresses.Add(new DealerAddress
+                {
+                    AddressType = AddressType.Shipping,
+                    AddressLine1 = d.Area,
+                    City = d.City,
+                    Country = "Pakistan",
+                    IsDefault = true,
+                    IsActive = true
+                });
+
+                dealer.Contacts.Add(new DealerContact
+                {
+                    ContactName = d.Contact,
+                    Email = d.Email,
+                    Phone = d.Phone,
+                    Mobile = d.Phone,
+                    IsPrimary = true,
+                    IsActive = true
+                });
+
+                db.Dealers.Add(dealer);
+            }
+
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("Seeded {Count} dealers", dealers.Length);
+        }
     }
 
     private static async Task EnsureAdminAsync(AppDbContext db, ILogger logger, CancellationToken ct)
