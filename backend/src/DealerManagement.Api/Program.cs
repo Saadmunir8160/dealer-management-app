@@ -32,9 +32,18 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Prefer cloud env (Railway/Render) over local appsettings SQL Server.
-// Without this, baked-in appsettings ConnectionStrings wins and cloud login hits SQL Server → 500.
-var connectionString =
-    FirstNonEmpty(
+// In Production, never fall back to local SSMS connection baked into the image.
+var isProduction = builder.Environment.IsProduction()
+    || string.Equals(
+        Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
+        "Production",
+        StringComparison.OrdinalIgnoreCase);
+
+var connectionString = isProduction
+    ? FirstNonEmpty(
+        Environment.GetEnvironmentVariable("DATABASE_URL"),
+        Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection"))
+    : FirstNonEmpty(
         Environment.GetEnvironmentVariable("DATABASE_URL"),
         Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection"),
         builder.Configuration["ConnectionStrings:DefaultConnection"],
@@ -43,7 +52,9 @@ var connectionString =
 if (string.IsNullOrWhiteSpace(connectionString))
 {
     throw new InvalidOperationException(
-        "Database connection string missing. Set DATABASE_URL or ConnectionStrings__DefaultConnection.");
+        isProduction
+            ? "Production requires DATABASE_URL (or ConnectionStrings__DefaultConnection) pointing to Railway Postgres. Set it in Railway Variables → Add Reference → Postgres.DATABASE_URL"
+            : "Database connection string missing. Set DATABASE_URL or ConnectionStrings__DefaultConnection.");
 }
 
 // Render often gives postgres:// — convert to Npgsql format
