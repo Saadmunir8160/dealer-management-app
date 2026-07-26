@@ -31,15 +31,19 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 builder.Host.UseSerilog();
 
-// Connection: env ConnectionStrings__DefaultConnection or DATABASE_URL (Render Postgres)
+// Prefer cloud env (Railway/Render) over local appsettings SQL Server.
+// Without this, baked-in appsettings ConnectionStrings wins and cloud login hits SQL Server → 500.
 var connectionString =
-    builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? Environment.GetEnvironmentVariable("DATABASE_URL");
+    FirstNonEmpty(
+        Environment.GetEnvironmentVariable("DATABASE_URL"),
+        Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection"),
+        builder.Configuration["ConnectionStrings:DefaultConnection"],
+        builder.Configuration.GetConnectionString("DefaultConnection"));
 
 if (string.IsNullOrWhiteSpace(connectionString))
 {
     throw new InvalidOperationException(
-        "Database connection string missing. Set ConnectionStrings:DefaultConnection or DATABASE_URL.");
+        "Database connection string missing. Set DATABASE_URL or ConnectionStrings__DefaultConnection.");
 }
 
 // Render often gives postgres:// — convert to Npgsql format
@@ -165,6 +169,16 @@ using (var scope = app.Services.CreateScope())
 
 Log.Information("API listening. Swagger at /swagger");
 app.Run();
+
+static string? FirstNonEmpty(params string?[] values)
+{
+    foreach (var v in values)
+    {
+        if (!string.IsNullOrWhiteSpace(v))
+            return v;
+    }
+    return null;
+}
 
 static bool IsPostgresConnection(string cs)
 {
