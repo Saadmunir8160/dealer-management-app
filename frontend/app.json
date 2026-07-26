@@ -6,9 +6,7 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.7",
     "updates": {
       "url": "https://u.expo.dev/e5953b17-8a0f-42e3-9ae2-59b4b577ad6d",
       "fallbackToCacheTimeout": 0,
