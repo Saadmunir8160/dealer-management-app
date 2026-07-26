@@ -12,7 +12,7 @@
       },
       "env": {
         "EXPO_PUBLIC_APP_ENV": "development",
-        "EXPO_PUBLIC_API_URL": "https://profits-hampton-quite-instructions.trycloudflare.com",
+        "EXPO_PUBLIC_API_URL": "https://dealer-management-app-production.up.railway.app",
         "EXPO_PUBLIC_ENABLE_LOGS": "true"
       }
     },
@@ -23,7 +23,7 @@
       },
       "env": {
         "EXPO_PUBLIC_APP_ENV": "production",
-        "EXPO_PUBLIC_API_URL": "https://profits-hampton-quite-instructions.trycloudflare.com",
+        "EXPO_PUBLIC_API_URL": "https://dealer-management-app-production.up.railway.app",
         "EXPO_PUBLIC_ENABLE_LOGS": "true"
       }
     },
@@ -33,7 +33,7 @@
       },
       "env": {
         "EXPO_PUBLIC_APP_ENV": "production",
-        "EXPO_PUBLIC_API_URL": "https://profits-hampton-quite-instructions.trycloudflare.com",
+        "EXPO_PUBLIC_API_URL": "https://dealer-management-app-production.up.railway.app",
         "EXPO_PUBLIC_ENABLE_LOGS": "false"
       }
     }
