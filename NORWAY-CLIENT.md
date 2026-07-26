@@ -1,9 +1,11 @@
 # Norway client — share this
 
 ## Install (Android APK)
-**Version 1.0.7** — UCIC Create Order fields + live Dashboard + OTA updates.
+Install page: https://expo.dev/accounts/khanasad/projects/ucic-customer-portal/builds/753d664a-3ca4-45f9-9340-3ac76ff992a3
 
-APK link: *(building — will update when EAS finishes)*
+Direct APK: https://expo.dev/artifacts/eas/OiSvbstKiy9t5Wpnz6CCMhZqdPQkFCcVDt0BJzR_IsU.apk
+
+Version: **1.0.7** (UCIC fields + live Dashboard + OTA)
 
 API: `https://dealer-management-app-production.up.railway.app`
 
@@ -15,7 +17,7 @@ API: `https://dealer-management-app-production.up.railway.app`
 1. Allow install from unknown sources if Android asks.
 2. Need internet (Wi‑Fi or mobile data).
 3. PC / Cloudflare tunnel **not required**.
-4. After install, app can receive UI fixes via OTA (no reinstall for JS-only changes).
+4. Later UI-only fixes can ship via OTA (no reinstall).
 
 ## What they will see
 - **New Order:** Coupon, ERP #, Delivery Area, Driver, Vehicle + live products
