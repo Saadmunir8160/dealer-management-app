@@ -36,6 +36,11 @@ export const orderApi = {
     apiClient.post<ApiResponse<Order>>(ORDER_ENDPOINTS.BASE, {
       dealerId: payload.dealerId,
       shippingAddress: payload.deliveryArea,
+      deliveryArea: payload.deliveryArea,
+      couponNumber: payload.couponNumber,
+      erpOrderNumber: payload.erpOrderNumber,
+      driver: payload.driver,
+      vehicle: payload.vehicle,
       items: payload.items.map(i => ({
         productId: i.productId,
         quantity: i.quantity,

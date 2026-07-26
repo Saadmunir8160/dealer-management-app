@@ -67,6 +67,13 @@ public class OrderService : IOrderService
         {
             var orderNumber = $"ORD-{DateTime.UtcNow:yyyyMMddHHmmss}-{new Random().Next(1000, 9999)}";
 
+            var deliveryArea = !string.IsNullOrWhiteSpace(request.DeliveryArea)
+                ? request.DeliveryArea.Trim()
+                : request.ShippingAddress?.Trim();
+            var couponNumber = !string.IsNullOrWhiteSpace(request.CouponNumber)
+                ? request.CouponNumber.Trim()
+                : orderNumber;
+
             var order = new Order
             {
                 OrderNumber = orderNumber,
@@ -77,9 +84,15 @@ public class OrderService : IOrderService
                 PaymentStatus = PaymentStatus.Pending,
                 DiscountAmount = request.DiscountAmount,
                 ShippingCost = request.ShippingCost,
-                ShippingAddress = request.ShippingAddress,
+                ShippingAddress = deliveryArea,
                 BillingAddress = request.BillingAddress,
                 Notes = request.Notes,
+                CouponNumber = couponNumber,
+                ErpOrderNumber = string.IsNullOrWhiteSpace(request.ErpOrderNumber) ? null : request.ErpOrderNumber.Trim(),
+                DeliveryArea = deliveryArea,
+                Driver = string.IsNullOrWhiteSpace(request.Driver) ? null : request.Driver.Trim(),
+                Vehicle = string.IsNullOrWhiteSpace(request.Vehicle) ? null : request.Vehicle.Trim(),
+                ReferenceNumber = string.IsNullOrWhiteSpace(request.ErpOrderNumber) ? null : request.ErpOrderNumber.Trim(),
                 SalesPersonId = userId,
                 CreatedBy = userId
             };
@@ -244,18 +257,59 @@ public class DashboardService : IDashboardService
 
     public async Task<ApiResponse<DashboardDto>> GetDashboardAsync()
     {
-        var totalSales = await _unitOfWork.Orders.Query()
+        var ordersQuery = _unitOfWork.Orders.Query();
+
+        var totalSales = await ordersQuery
             .Where(o => o.Status != OrderStatus.Cancelled)
-            .SumAsync(o => o.TotalAmount);
+            .SumAsync(o => (decimal?)o.TotalAmount) ?? 0;
 
         var totalOrders = await _unitOfWork.Orders.CountAsync();
         var activeDealers = await _unitOfWork.Dealers.CountAsync(d => d.Status == DealerStatus.Active);
 
         var avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
 
-        var pendingPayments = await _unitOfWork.Orders.Query()
+        var pendingPayments = await ordersQuery
             .Where(o => o.PaymentStatus == PaymentStatus.Pending || o.PaymentStatus == PaymentStatus.Partial)
-            .SumAsync(o => o.TotalAmount);
+            .SumAsync(o => (decimal?)o.TotalAmount) ?? 0;
+
+        var pendingOrders = await ordersQuery.CountAsync(o =>
+            o.Status == OrderStatus.Pending ||
+            o.Status == OrderStatus.Confirmed ||
+            o.Status == OrderStatus.Processing ||
+            o.Status == OrderStatus.Shipped);
+
+        var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var ordersThisMonth = await ordersQuery.CountAsync(o => o.OrderDate >= monthStart);
+
+        var recent = await ordersQuery
+            .Include(o => o.Dealer)
+            .OrderByDescending(o => o.OrderDate)
+            .Take(10)
+            .Select(o => new RecentOrderDto
+            {
+                OrderId = o.Id,
+                CouponNumber = o.CouponNumber ?? o.OrderNumber,
+                ErpOrderNumber = o.ErpOrderNumber ?? o.ReferenceNumber,
+                OrderDate = o.OrderDate,
+                Status = o.Status.ToString(),
+                DeliveryArea = o.DeliveryArea ?? o.ShippingAddress,
+                Driver = o.Driver,
+                Vehicle = o.Vehicle,
+                DealerName = o.Dealer != null ? o.Dealer.DealerName : null,
+                TotalAmount = o.TotalAmount
+            })
+            .ToListAsync();
+
+        // Map Draft → Pending for portal display
+        foreach (var row in recent)
+        {
+            if (string.Equals(row.Status, "Draft", StringComparison.OrdinalIgnoreCase))
+                row.Status = "Pending";
+            if (string.Equals(row.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+                row.Status = "Delivered";
+            if (string.Equals(row.Status, "Returned", StringComparison.OrdinalIgnoreCase))
+                row.Status = "Cancelled";
+        }
 
         var dto = new DashboardDto
         {
@@ -264,7 +318,14 @@ public class DashboardService : IDashboardService
             ActiveDealers = activeDealers,
             AverageOrderValue = avgOrderValue,
             PendingPayments = pendingPayments,
-            LowStockProducts = 0 // TODO: implement stock check
+            LowStockProducts = 0,
+            PendingOrders = pendingOrders,
+            OrdersThisMonth = ordersThisMonth,
+            AvailableCredit = 0,
+            CreditExpiry = null,
+            RecentOrders = recent,
+            SupportPhone = "+966 11 234 5678",
+            SupportEmail = "support@ucic.com"
         };
 
         return ApiResponse<DashboardDto>.SuccessResponse(dto);

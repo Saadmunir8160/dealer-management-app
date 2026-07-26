@@ -147,6 +147,11 @@ export const mockCreateOrder = async (
     orderDate: new Date().toISOString(),
     totalAmount,
     status: 'Pending',
+    couponNumber: payload.couponNumber,
+    erpOrderNumber: payload.erpOrderNumber ?? null,
+    deliveryArea: payload.deliveryArea ?? null,
+    driver: payload.driver ?? null,
+    vehicle: payload.vehicle ?? null,
     items,
   };
 
@@ -158,6 +163,12 @@ export const mockCreateOrder = async (
     orderDate: newOrder.orderDate,
     totalAmount: newOrder.totalAmount,
     status: newOrder.status,
+    couponNumber: newOrder.couponNumber,
+    erpOrderNumber: newOrder.erpOrderNumber,
+    deliveryArea: newOrder.deliveryArea,
+    driver: newOrder.driver,
+    vehicle: newOrder.vehicle,
+    itemCount: items.length,
   });
 
   return {

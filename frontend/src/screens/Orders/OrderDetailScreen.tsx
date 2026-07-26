@@ -93,6 +93,11 @@ const OrderDetailScreen: React.FC<Props> = ({ route }) => {
         {/* ── Details ────────────────────────────────────────────────── */}
         <AppCard style={styles.section}>
           <Text style={styles.sectionTitle}>Order Details</Text>
+          <Row label="Coupon" value={order.couponNumber ?? `ORD-${order.orderId}`} />
+          <Row label="ERP Order" value={order.erpOrderNumber ?? '—'} />
+          <Row label="Delivery Area" value={order.deliveryArea ?? '—'} />
+          <Row label="Driver" value={order.driver ?? '—'} />
+          <Row label="Vehicle" value={order.vehicle ?? '—'} />
           <Row label="Order Date" value={formatDate(order.orderDate, 'dd MMM yyyy, hh:mm a')} />
           <Row label="Sales Person" value={order.salesPerson} />
           <Row label="Items" value={String(order.items.length)} />

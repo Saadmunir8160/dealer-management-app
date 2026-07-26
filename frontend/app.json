@@ -2,10 +2,18 @@
   "expo": {
     "name": "UCIC Customer Portal",
     "slug": "ucic-customer-portal",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e5953b17-8a0f-42e3-9ae2-59b4b577ad6d",
+      "fallbackToCacheTimeout": 0,
+      "checkAutomatically": "ON_LOAD"
+    },
     "icon": "./assets/logo-light.png",
     "splash": {
       "image": "./assets/logo-light.png",
@@ -21,7 +29,7 @@
     },
     "android": {
       "package": "com.ucic.customerportal",
-      "versionCode": 8,
+      "versionCode": 9,
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo-light.png",
         "backgroundColor": "#1E40AF"
@@ -34,6 +42,7 @@
     },
     "plugins": [
       "./plugins/withNetworkSecurityConfig.js",
+      "expo-updates",
       [
         "expo-build-properties",
         {

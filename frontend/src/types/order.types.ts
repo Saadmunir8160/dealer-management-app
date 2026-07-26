@@ -52,7 +52,11 @@ export interface OrderSummary {
 export interface CreateOrderRequest {
   dealerId: number;
   items: CreateOrderItemRequest[];
+  couponNumber?: string;
+  erpOrderNumber?: string;
   deliveryArea?: string;
+  driver?: string;
+  vehicle?: string;
 }
 
 export interface CreateOrderItemRequest {

@@ -204,6 +204,11 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(e => e.BillingAddress).HasMaxLength(1000);
         builder.Property(e => e.Notes).HasMaxLength(2000);
         builder.Property(e => e.ReferenceNumber).HasMaxLength(100);
+        builder.Property(e => e.CouponNumber).HasMaxLength(50);
+        builder.Property(e => e.ErpOrderNumber).HasMaxLength(100);
+        builder.Property(e => e.DeliveryArea).HasMaxLength(200);
+        builder.Property(e => e.Driver).HasMaxLength(150);
+        builder.Property(e => e.Vehicle).HasMaxLength(100);
 
         builder.HasIndex(e => e.OrderNumber).IsUnique();
         builder.HasIndex(e => e.DealerId);

@@ -130,19 +130,29 @@ const DashboardScreen = () => {
             recentOrders.map(order => (
               <TouchableOpacity
                 key={order.orderId}
-                style={[styles.tableRow, isRTL && styles.rowReverse]}
+                style={styles.orderBlock}
                 onPress={() => goTo('OrderDetail', { orderId: order.orderId })}
               >
-                <View style={styles.colCoupon}>
-                  <Text style={[styles.coupon, isRTL && styles.rtlText]}>{order.couponNumber ?? `#${order.orderId}`}</Text>
-                  <Text style={[styles.meta, isRTL && styles.rtlText]}>{formatDate(order.orderDate)}</Text>
+                <View style={[styles.tableRow, isRTL && styles.rowReverse]}>
+                  <View style={styles.colCoupon}>
+                    <Text style={[styles.coupon, isRTL && styles.rtlText]}>{order.couponNumber ?? `#${order.orderId}`}</Text>
+                    <Text style={[styles.meta, isRTL && styles.rtlText]}>{formatDate(order.orderDate)}</Text>
+                  </View>
+                  <View style={styles.colStatus}>
+                    <StatusChip label={order.status} type={getStatusType(order.status)} />
+                  </View>
+                  <View style={styles.colArea}>
+                    <Text style={[styles.meta, isRTL && styles.rtlText]} numberOfLines={1}>{order.deliveryArea ?? '—'}</Text>
+                    <Text style={[styles.meta, isRTL && styles.rtlText]} numberOfLines={1}>{order.driver ?? t('noDriver')}</Text>
+                  </View>
                 </View>
-                <View style={styles.colStatus}>
-                  <StatusChip label={order.status} type={getStatusType(order.status)} />
-                </View>
-                <View style={styles.colArea}>
-                  <Text style={[styles.meta, isRTL && styles.rtlText]} numberOfLines={1}>{order.deliveryArea ?? '—'}</Text>
-                  <Text style={[styles.meta, isRTL && styles.rtlText]} numberOfLines={1}>{order.driver ?? t('noDriver')}</Text>
+                <View style={[styles.ucicRow, isRTL && styles.rowReverse]}>
+                  <Text style={[styles.ucicItem, isRTL && styles.rtlText]}>
+                    {t('erpOrder')}: {order.erpOrderNumber ?? t('noErpOrder')}
+                  </Text>
+                  <Text style={[styles.ucicItem, isRTL && styles.rtlText]}>
+                    {t('vehicle')}: {order.vehicle ?? '—'}
+                  </Text>
                 </View>
               </TouchableOpacity>
             ))
@@ -245,10 +255,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: Spacing[3],
     paddingVertical: Spacing[3],
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
     alignItems: 'center',
   },
+  orderBlock: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  ucicRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing[3],
+    paddingBottom: Spacing[3],
+    gap: Spacing[2],
+  },
+  ucicItem: { ...Typography.caption, color: Colors.textSecondary, flex: 1 },
   colCoupon: { flex: 1.2 },
   colStatus: { flex: 1, alignItems: 'flex-start' },
   colArea: { flex: 1 },

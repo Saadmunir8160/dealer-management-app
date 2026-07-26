@@ -8,6 +8,7 @@ import {
   PaginatedResponse,
 } from '@types';
 import { parseApiError } from '@utils/errorHandler';
+import { mapBackendDealersList } from '@utils/dealerMappers';
 import {
   mockGetDealers,
   mockGetDealerById,
@@ -25,33 +26,21 @@ export const DealerService = {
         await delay(Config.MOCK_DELAY_MS);
         return await mockGetDealers(params);
       }
-      try {
-        const response = await dealerApi.getAll(params);
-        const data = response.data;
-        // Backend PagedResult may nest items differently — fall back if empty/invalid
-        if (data?.data && Array.isArray(data.data) && data.data.length > 0) {
-          return data;
-        }
-        const nested = (data as unknown as { data?: { items?: Dealer[] } })?.data?.items;
-        if (nested?.length) {
-          return {
-            success: true,
-            message: '',
-            data: nested,
-            pagination: data.pagination ?? {
-              page: params.page,
-              limit: params.limit,
-              total: nested.length,
-              totalPages: 1,
-              hasNextPage: false,
-              hasPrevPage: false,
-            },
-          };
-        }
-        return await mockGetDealers(params);
-      } catch {
-        return await mockGetDealers(params);
-      }
+      const response = await dealerApi.getAll(params);
+      const mapped = mapBackendDealersList(response.data);
+      return {
+        success: true,
+        message: '',
+        data: mapped,
+        pagination: {
+          page: params.page,
+          limit: params.limit,
+          total: mapped.length,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPrevPage: false,
+        },
+      };
     } catch (error) {
       throw parseApiError(error);
     }

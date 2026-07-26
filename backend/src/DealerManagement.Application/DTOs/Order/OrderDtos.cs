@@ -20,6 +20,11 @@ public class OrderDto
     public string? ShippingAddress { get; set; }
     public string? BillingAddress { get; set; }
     public string? Notes { get; set; }
+    public string? CouponNumber { get; set; }
+    public string? ErpOrderNumber { get; set; }
+    public string? DeliveryArea { get; set; }
+    public string? Driver { get; set; }
+    public string? Vehicle { get; set; }
     public List<OrderItemDto> Items { get; set; } = new();
     public DateTime CreatedDate { get; set; }
 }
@@ -47,6 +52,11 @@ public class CreateOrderRequest
     public string? ShippingAddress { get; set; }
     public string? BillingAddress { get; set; }
     public string? Notes { get; set; }
+    public string? CouponNumber { get; set; }
+    public string? ErpOrderNumber { get; set; }
+    public string? DeliveryArea { get; set; }
+    public string? Driver { get; set; }
+    public string? Vehicle { get; set; }
     public List<CreateOrderItemRequest> Items { get; set; } = new();
 }
 
@@ -90,4 +100,25 @@ public class DashboardDto
     public decimal AverageOrderValue { get; set; }
     public decimal PendingPayments { get; set; }
     public int LowStockProducts { get; set; }
+    public int PendingOrders { get; set; }
+    public int OrdersThisMonth { get; set; }
+    public decimal AvailableCredit { get; set; }
+    public DateTime? CreditExpiry { get; set; }
+    public List<RecentOrderDto> RecentOrders { get; set; } = new();
+    public string? SupportPhone { get; set; }
+    public string? SupportEmail { get; set; }
+}
+
+public class RecentOrderDto
+{
+    public int OrderId { get; set; }
+    public string? CouponNumber { get; set; }
+    public string? ErpOrderNumber { get; set; }
+    public DateTime OrderDate { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string? DeliveryArea { get; set; }
+    public string? Driver { get; set; }
+    public string? Vehicle { get; set; }
+    public string? DealerName { get; set; }
+    public decimal TotalAmount { get; set; }
 }

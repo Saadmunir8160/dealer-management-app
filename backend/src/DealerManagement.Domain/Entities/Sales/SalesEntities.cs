@@ -20,6 +20,14 @@ public class Order : BaseEntity
     public string? BillingAddress { get; set; }
     public string? Notes { get; set; }
     public string? ReferenceNumber { get; set; }
+    /// <summary>UCIC coupon / delivery slip number shown on portal.</summary>
+    public string? CouponNumber { get; set; }
+    /// <summary>External ERP order reference.</summary>
+    public string? ErpOrderNumber { get; set; }
+    /// <summary>Delivery area / zone (also mirrored to ShippingAddress).</summary>
+    public string? DeliveryArea { get; set; }
+    public string? Driver { get; set; }
+    public string? Vehicle { get; set; }
     public int? SalesPersonId { get; set; }
 
     // Navigation properties

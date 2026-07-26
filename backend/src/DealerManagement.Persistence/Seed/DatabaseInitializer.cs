@@ -22,6 +22,7 @@ public static class DatabaseInitializer
             // SQL Server migrations are incompatible with Postgres — create schema from model
             await db.Database.EnsureCreatedAsync(ct);
             logger.LogInformation("Postgres schema ensured via EnsureCreated");
+            await EnsureOrderUcicColumnsAsync(db, logger, ct);
         }
         else
         {
@@ -31,6 +32,22 @@ public static class DatabaseInitializer
 
         await EnsureAdminAsync(db, logger, ct);
         await EnsureCatalogAsync(db, logger, ct);
+    }
+
+    /// <summary>
+    /// EnsureCreated does not alter existing tables — add UCIC columns if missing.
+    /// </summary>
+    private static async Task EnsureOrderUcicColumnsAsync(AppDbContext db, ILogger logger, CancellationToken ct)
+    {
+        var sql = """
+            ALTER TABLE "Sales"."Orders" ADD COLUMN IF NOT EXISTS "CouponNumber" character varying(50);
+            ALTER TABLE "Sales"."Orders" ADD COLUMN IF NOT EXISTS "ErpOrderNumber" character varying(100);
+            ALTER TABLE "Sales"."Orders" ADD COLUMN IF NOT EXISTS "DeliveryArea" character varying(200);
+            ALTER TABLE "Sales"."Orders" ADD COLUMN IF NOT EXISTS "Driver" character varying(150);
+            ALTER TABLE "Sales"."Orders" ADD COLUMN IF NOT EXISTS "Vehicle" character varying(100);
+            """;
+        await db.Database.ExecuteSqlRawAsync(sql, ct);
+        logger.LogInformation("Ensured UCIC order columns on Sales.Orders");
     }
 
     private static async Task EnsureCatalogAsync(AppDbContext db, ILogger logger, CancellationToken ct)

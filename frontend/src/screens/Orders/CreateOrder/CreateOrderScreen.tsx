@@ -45,9 +45,9 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { OrderService } from '@services/orderService';
 import { DealerService } from '@services/dealerService';
+import { ProductService } from '@services/productService';
 import { useToast } from '@context';
 import { Colors, Typography, Spacing, BorderRadius } from '@theme';
-import { MOCK_PRODUCTS } from '@mock/data/products.mock';
 import AppInput from '@components/inputs/AppInput';
 import AppButton from '@components/buttons/AppButton';
 import AppCard from '@components/cards/AppCard';
@@ -64,6 +64,11 @@ const orderItemSchema = yup.object({
 
 const orderSchema = yup.object({
   dealerId: yup.number().required('Please select a dealer').min(1, 'Please select a dealer'),
+  couponNumber: yup.string().trim().required('Coupon number is required'),
+  erpOrderNumber: yup.string().trim().optional().default(''),
+  deliveryArea: yup.string().trim().required('Delivery area is required'),
+  driver: yup.string().trim().required('Driver is required'),
+  vehicle: yup.string().trim().required('Vehicle is required'),
   items: yup
     .array()
     .of(orderItemSchema)
@@ -197,8 +202,7 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dealers, setDealers] = useState<Dealer[]>([]);
-
-  const products = useMemo(() => MOCK_PRODUCTS.filter((p) => p.status), []);
+  const [products, setProducts] = useState<Product[]>([]);
 
   const productOptions: SelectOption[] = useMemo(
     () =>
@@ -214,7 +218,7 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
       dealers
         .filter((d) => d.status)
         .map((d) => ({
-          label: `${d.dealerName} — ${d.city}`,
+          label: `${d.dealerName}${d.city ? ` — ${d.city}` : ''}`,
           value: d.dealerId,
         })),
     [dealers],
@@ -229,6 +233,11 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
     resolver: yupResolver(orderSchema),
     defaultValues: {
       dealerId: preSelectedDealerId || 0,
+      couponNumber: '',
+      erpOrderNumber: '',
+      deliveryArea: '',
+      driver: '',
+      vehicle: '',
       items: [{ productId: 0, quantity: 1, unitPrice: 0 }],
     },
     mode: 'onChange',
@@ -242,9 +251,15 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
   const watchedItems = useWatch({ control, name: 'items' });
 
   useEffect(() => {
-    DealerService.fetchDealers({ page: 1, limit: 100 })
-      .then((res) => setDealers(res.data))
-      .catch(() => showError('Error', 'Failed to load dealers'))
+    Promise.all([
+      DealerService.fetchDealers({ page: 1, limit: 100 }),
+      ProductService.fetchActiveProducts(),
+    ])
+      .then(([dealerRes, productList]) => {
+        setDealers(dealerRes.data);
+        setProducts(productList);
+      })
+      .catch(() => showError('Error', 'Failed to load dealers & products'))
       .finally(() => setIsLoading(false));
   }, [showError]);
 
@@ -267,6 +282,11 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
     try {
       const payload: CreateOrderRequest = {
         dealerId: data.dealerId,
+        couponNumber: data.couponNumber.trim(),
+        erpOrderNumber: data.erpOrderNumber?.trim() || undefined,
+        deliveryArea: data.deliveryArea.trim(),
+        driver: data.driver.trim(),
+        vehicle: data.vehicle.trim(),
         items: data.items.map((item) => {
           const product = products.find(p => p.productId === item.productId);
           return {
@@ -300,7 +320,7 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.title}>Create New Order</Text>
-          <Text style={styles.subtitle}>Select a dealer and add products</Text>
+          <Text style={styles.subtitle}>Dealer, delivery details, and products</Text>
 
           <AppCard style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>Dealer</Text>
@@ -315,6 +335,80 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
                   onChange={(val) => onChange(Number(val))}
                   placeholder="Choose a dealer..."
                   error={errors.dealerId?.message}
+                />
+              )}
+            />
+          </AppCard>
+
+          <AppCard style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Delivery Details</Text>
+            <Controller
+              control={control}
+              name="couponNumber"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <AppInput
+                  label="Coupon Number"
+                  value={value ?? ''}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  placeholder="e.g. CPN-1001"
+                  error={errors.couponNumber?.message}
+                />
+              )}
+            />
+            <Controller
+              control={control}
+              name="erpOrderNumber"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <AppInput
+                  label="ERP Order Number"
+                  value={value ?? ''}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  placeholder="Optional"
+                  error={errors.erpOrderNumber?.message}
+                />
+              )}
+            />
+            <Controller
+              control={control}
+              name="deliveryArea"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <AppInput
+                  label="Delivery Area"
+                  value={value ?? ''}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  placeholder="e.g. Riyadh North"
+                  error={errors.deliveryArea?.message}
+                />
+              )}
+            />
+            <Controller
+              control={control}
+              name="driver"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <AppInput
+                  label="Driver"
+                  value={value ?? ''}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  placeholder="Driver name"
+                  error={errors.driver?.message}
+                />
+              )}
+            />
+            <Controller
+              control={control}
+              name="vehicle"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <AppInput
+                  label="Vehicle"
+                  value={value ?? ''}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  placeholder="e.g. TRK-204"
+                  error={errors.vehicle?.message}
                 />
               )}
             />

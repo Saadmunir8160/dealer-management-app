@@ -33,6 +33,18 @@ interface BackendOrderDto {
   Status?: string | number;
   shippingAddress?: string | null;
   ShippingAddress?: string | null;
+  couponNumber?: string | null;
+  CouponNumber?: string | null;
+  erpOrderNumber?: string | null;
+  ErpOrderNumber?: string | null;
+  deliveryArea?: string | null;
+  DeliveryArea?: string | null;
+  driver?: string | null;
+  Driver?: string | null;
+  vehicle?: string | null;
+  Vehicle?: string | null;
+  referenceNumber?: string | null;
+  ReferenceNumber?: string | null;
   items?: BackendOrderItemDto[];
   Items?: BackendOrderItemDto[];
   createdDate?: string;
@@ -91,11 +103,11 @@ export const mapBackendOrderToSummary = (dto: BackendOrderDto): OrderSummary => 
     orderDate: String(dto.orderDate ?? dto.OrderDate ?? dto.createdDate ?? dto.CreatedDate ?? new Date().toISOString()),
     totalAmount: Number(dto.totalAmount ?? dto.TotalAmount ?? 0),
     status: mapBackendStatus(dto.status ?? dto.Status),
-    couponNumber: orderNumber,
-    erpOrderNumber: null,
-    deliveryArea: dto.shippingAddress ?? dto.ShippingAddress ?? null,
-    driver: null,
-    vehicle: null,
+    couponNumber: dto.couponNumber ?? dto.CouponNumber ?? orderNumber,
+    erpOrderNumber: dto.erpOrderNumber ?? dto.ErpOrderNumber ?? dto.referenceNumber ?? dto.ReferenceNumber ?? null,
+    deliveryArea: dto.deliveryArea ?? dto.DeliveryArea ?? dto.shippingAddress ?? dto.ShippingAddress ?? null,
+    driver: dto.driver ?? dto.Driver ?? null,
+    vehicle: dto.vehicle ?? dto.Vehicle ?? null,
     itemCount: Array.isArray(items) ? items.length : 0,
   };
 };
@@ -127,8 +139,11 @@ export const mapBackendOrderToDetail = (dto: BackendOrderDto | Record<string, un
     orderDate: String(d.orderDate ?? d.OrderDate ?? d.createdDate ?? d.CreatedDate ?? new Date().toISOString()),
     totalAmount: Number(d.totalAmount ?? d.TotalAmount ?? 0),
     status: mapBackendStatus(d.status ?? d.Status),
-    couponNumber: d.orderNumber ?? d.OrderNumber,
-    deliveryArea: d.shippingAddress ?? d.ShippingAddress ?? null,
+    couponNumber: d.couponNumber ?? d.CouponNumber ?? d.orderNumber ?? d.OrderNumber,
+    erpOrderNumber: d.erpOrderNumber ?? d.ErpOrderNumber ?? d.referenceNumber ?? d.ReferenceNumber ?? null,
+    deliveryArea: d.deliveryArea ?? d.DeliveryArea ?? d.shippingAddress ?? d.ShippingAddress ?? null,
+    driver: d.driver ?? d.Driver ?? null,
+    vehicle: d.vehicle ?? d.Vehicle ?? null,
     items,
   };
 };
