@@ -6,6 +6,7 @@ import { Colors } from '@theme';
 import BottomTabNavigator from './BottomTabNavigator';
 import OrderDetailScreen from '@screens/Orders/OrderDetailScreen';
 import CreateOrderScreen from '@screens/Orders/CreateOrder/CreateOrderScreen';
+import VoiceOrderScreen from '@screens/Orders/VoiceOrder/VoiceOrderScreen';
 import EditProfileScreen from '@screens/Profile/EditProfileScreen';
 import ChangePasswordScreen from '@screens/Profile/ChangePasswordScreen';
 import NotificationsScreen from '@screens/Notifications/NotificationsScreen';
@@ -35,6 +36,11 @@ const AppNavigator = () => (
     <Stack.Screen
       name="CreateOrder"
       component={CreateOrderScreen}
+      options={{ title: 'New Order' }}
+    />
+    <Stack.Screen
+      name="VoiceOrder"
+      component={VoiceOrderScreen}
       options={{ title: 'New Order' }}
     />
     <Stack.Screen

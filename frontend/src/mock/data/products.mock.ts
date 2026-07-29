@@ -1,25 +1,13 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// src/mock/data/products.mock.ts
-//
-// WHY THIS FILE EXISTS:
-//   Fake product records that mirror your SQL Server Products table.
-//   Used when creating orders — the user picks from this list.
-//
-// MATCHES SQL:
-//   INSERT INTO Products (ProductName, SKU, Price, Stock)
-//   VALUES
-//     ('Cement Bag', 'CB001', 1200, 500),
-//     ('Steel Rod',  'SR001', 2500, 300),
-//     ('Bricks',     'BR001', 18,   10000);
-// ─────────────────────────────────────────────────────────────────────────────
-
 import { Product } from '@types';
+import { inferProductUnit } from '@utils/productUnit';
 
 export const MOCK_PRODUCTS: Product[] = [
   {
     productId: 1,
     productName: 'Cement Bag',
     sku: 'CB001',
+    code: '5801',
+    unit: 'BAGS',
     price: 1200,
     stock: 500,
     status: true,
@@ -29,6 +17,8 @@ export const MOCK_PRODUCTS: Product[] = [
     productId: 2,
     productName: 'Steel Rod',
     sku: 'SR001',
+    code: '5701',
+    unit: 'PCS',
     price: 2500,
     stock: 300,
     status: true,
@@ -38,6 +28,8 @@ export const MOCK_PRODUCTS: Product[] = [
     productId: 3,
     productName: 'Bricks',
     sku: 'BR001',
+    code: '5702',
+    unit: 'PCS',
     price: 18,
     stock: 10000,
     status: true,
@@ -47,6 +39,8 @@ export const MOCK_PRODUCTS: Product[] = [
     productId: 4,
     productName: 'Sand (per cubic ft)',
     sku: 'SD001',
+    code: '5703',
+    unit: 'PCS',
     price: 150,
     stock: 5000,
     status: true,
@@ -56,6 +50,8 @@ export const MOCK_PRODUCTS: Product[] = [
     productId: 5,
     productName: 'Gravel (per cubic ft)',
     sku: 'GR001',
+    code: '5704',
+    unit: 'PCS',
     price: 200,
     stock: 4000,
     status: true,
@@ -65,6 +61,8 @@ export const MOCK_PRODUCTS: Product[] = [
     productId: 6,
     productName: 'Paint (20L)',
     sku: 'PT001',
+    code: '5705',
+    unit: 'PCS',
     price: 3500,
     stock: 200,
     status: true,
@@ -74,6 +72,8 @@ export const MOCK_PRODUCTS: Product[] = [
     productId: 7,
     productName: 'PVC Pipe (per meter)',
     sku: 'PV001',
+    code: '5706',
+    unit: 'PCS',
     price: 450,
     stock: 1500,
     status: true,
@@ -83,9 +83,14 @@ export const MOCK_PRODUCTS: Product[] = [
     productId: 8,
     productName: 'Ceramic Tiles (per sqft)',
     sku: 'CT001',
+    code: '5707',
+    unit: 'PCS',
     price: 120,
     stock: 8000,
-    status: false, // out of stock / discontinued
+    status: false,
     createdDate: '2024-01-15T00:00:00.000Z',
   },
-];
+].map(p => ({
+  ...p,
+  unit: inferProductUnit(null, p.productName, p.sku, p.code),
+}));

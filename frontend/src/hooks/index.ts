@@ -5,3 +5,5 @@
 export * from './useRedux';
 export * from './useAuth';
 export * from './useDealers';
+export * from './useSpeechRecognition';
+export * from './useVoiceOrder';

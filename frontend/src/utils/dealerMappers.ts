@@ -3,61 +3,88 @@ import { Dealer } from '@types';
 interface BackendDealerDto {
   id?: number;
   Id?: number;
+  dealerId?: number;
+  DealerId?: number;
+  dealerCode?: string;
+  DealerCode?: string;
   dealerName?: string;
   DealerName?: string;
   contactPerson?: string | null;
   ContactPerson?: string | null;
-  phone?: string | null;
-  Phone?: string | null;
   email?: string | null;
   Email?: string | null;
-  notes?: string | null;
-  Notes?: string | null;
-  status?: string | number | boolean;
-  Status?: string | number | boolean;
+  phone?: string | null;
+  Phone?: string | null;
+  mobile?: string | null;
+  Mobile?: string | null;
+  status?: string | boolean | number;
+  Status?: string | boolean | number;
   createdDate?: string;
   CreatedDate?: string;
-  addresses?: Array<{ city?: string; City?: string; isDefault?: boolean; IsDefault?: boolean }>;
-  Addresses?: Array<{ city?: string; City?: string; isDefault?: boolean; IsDefault?: boolean }>;
+  addresses?: BackendAddressDto[];
+  Addresses?: BackendAddressDto[];
 }
 
-const mapStatus = (status: string | number | boolean | undefined): boolean => {
+interface BackendAddressDto {
+  addressLine1?: string | null;
+  AddressLine1?: string | null;
+  city?: string | null;
+  City?: string | null;
+  isDefault?: boolean;
+  IsDefault?: boolean;
+}
+
+const isActiveStatus = (status: string | boolean | number | undefined): boolean => {
   if (typeof status === 'boolean') return status;
-  if (typeof status === 'number') return status === 1; // DealerStatus.Active = 1
-  const s = String(status ?? '').toLowerCase();
-  return s === 'active' || s === '1' || s === 'true';
+  if (typeof status === 'number') return status === 1;
+  const s = String(status ?? 'Active').toLowerCase();
+  return s === 'active' || s === 'true' || s === '1';
 };
 
 export const mapBackendDealer = (dto: BackendDealerDto): Dealer => {
   const addresses = dto.addresses ?? dto.Addresses ?? [];
-  const defaultAddr = addresses.find(a => a.isDefault ?? a.IsDefault) ?? addresses[0];
-  const city = defaultAddr?.city ?? defaultAddr?.City ?? null;
-  const notes = dto.notes ?? dto.Notes ?? null;
+  const primary =
+    addresses.find(a => a.isDefault ?? a.IsDefault) ?? addresses[0] ?? null;
 
   return {
-    dealerId: dto.id ?? dto.Id ?? 0,
-    dealerName: dto.dealerName ?? dto.DealerName ?? '—',
+    dealerId: dto.dealerId ?? dto.DealerId ?? dto.id ?? dto.Id ?? 0,
+    dealerName: String(dto.dealerName ?? dto.DealerName ?? '—'),
     contactPerson: dto.contactPerson ?? dto.ContactPerson ?? null,
-    phone: dto.phone ?? dto.Phone ?? null,
+    phone: dto.phone ?? dto.Phone ?? dto.mobile ?? dto.Mobile ?? null,
     email: dto.email ?? dto.Email ?? null,
-    address: notes,
-    city,
-    status: mapStatus(dto.status ?? dto.Status),
-    createdDate: String(dto.createdDate ?? dto.CreatedDate ?? new Date().toISOString()),
+    address: primary?.addressLine1 ?? primary?.AddressLine1 ?? null,
+    city: primary?.city ?? primary?.City ?? null,
+    status: isActiveStatus(dto.status ?? dto.Status),
+    createdDate: String(
+      dto.createdDate ?? dto.CreatedDate ?? new Date().toISOString(),
+    ),
   };
 };
 
+/** Map DealerManagement.Api GET /dealers paged response → Dealer[] */
 export const mapBackendDealersList = (axiosData: unknown): Dealer[] => {
   const envelope = axiosData as {
-    data?: BackendDealerDto[] | { items?: BackendDealerDto[]; Items?: BackendDealerDto[] };
+    data?: any;
+    Data?: any;
+    success?: boolean;
   };
-  const payload = envelope?.data;
+
+  const payload = envelope?.data ?? envelope?.Data ?? envelope;
+  let list: BackendDealerDto[] = [];
+
   if (Array.isArray(payload)) {
-    return payload.map(mapBackendDealer).filter(d => d.dealerId > 0);
+    list = payload;
+  } else if (payload && typeof payload === 'object') {
+    list =
+      payload.items ??
+      payload.Items ??
+      payload.data ??
+      payload.Data ??
+      [];
   }
-  if (payload && typeof payload === 'object') {
-    const items = payload.items ?? payload.Items ?? [];
-    return items.map(mapBackendDealer).filter(d => d.dealerId > 0);
-  }
-  return [];
+
+  return (list || [])
+    .map(mapBackendDealer)
+    .filter(d => d.dealerId > 0)
+    .sort((a, b) => a.dealerName.localeCompare(b.dealerName));
 };

@@ -17,10 +17,19 @@
 
 // ── Product ───────────────────────────────────────────────────────────────────
 // Represents one row from the Products table.
+/** Display / summary unit inferred from UCIC product type or name */
+export type ProductUnit = 'BAGS' | 'TONS' | 'PCS';
+
 export interface Product {
   productId: number;    // INT IDENTITY — primary key
   productName: string;  // NVARCHAR(150) — display name
   sku: string | null;   // NVARCHAR(50)  — stock keeping unit code
+  /** UCIC LN / product code (e.g. 5801) */
+  code: string | null;
+  arabicName?: string | null;
+  /** UCIC Type field when present */
+  type?: string | null;
+  unit: ProductUnit;
   price: number;        // DECIMAL(18,2) — unit price in PKR
   stock: number;        // INT           — available quantity
   status: boolean;      // BIT           — true = available for ordering

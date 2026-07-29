@@ -11,10 +11,14 @@
       "android": {
         "buildType": "apk"
       },
+      "ios": {
+        "simulator": true
+      },
       "env": {
         "EXPO_PUBLIC_APP_ENV": "development",
-        "EXPO_PUBLIC_API_URL": "https://dealer-management-app-production.up.railway.app",
-        "EXPO_PUBLIC_ENABLE_LOGS": "true"
+        "EXPO_PUBLIC_API_URL": "http://127.0.0.1:5246",
+        "EXPO_PUBLIC_ENABLE_LOGS": "true",
+        "EXPO_PUBLIC_GEMINI_MODEL": "gemini-2.5-flash"
       }
     },
     "preview": {
@@ -23,25 +27,38 @@
       "android": {
         "buildType": "apk"
       },
+      "ios": {
+        "simulator": false,
+        "resourceClass": "m-medium"
+      },
       "env": {
         "EXPO_PUBLIC_APP_ENV": "production",
         "EXPO_PUBLIC_API_URL": "https://dealer-management-app-production.up.railway.app",
-        "EXPO_PUBLIC_ENABLE_LOGS": "true"
+        "EXPO_PUBLIC_ENABLE_LOGS": "true",
+        "EXPO_PUBLIC_GEMINI_MODEL": "gemini-2.5-flash"
       }
     },
     "production": {
       "channel": "production",
       "android": {
-        "buildType": "apk"
+        "buildType": "app-bundle"
       },
+      "ios": {},
       "env": {
         "EXPO_PUBLIC_APP_ENV": "production",
         "EXPO_PUBLIC_API_URL": "https://dealer-management-app-production.up.railway.app",
-        "EXPO_PUBLIC_ENABLE_LOGS": "false"
+        "EXPO_PUBLIC_ENABLE_LOGS": "false",
+        "EXPO_PUBLIC_GEMINI_MODEL": "gemini-2.5-flash"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      },
+      "ios": {}
+    }
   }
 }

@@ -14,85 +14,88 @@ import {
   toBackendLoginRequest,
 } from '@utils/authMappers';
 
-/**
- * DealerManagement.Api AuthController (port 5246)
- * POST /api/auth/login
- * POST /api/auth/logout
- * POST /api/auth/refresh-token
- */
+/** DealerManagement.Api AuthController */
 const AUTH_ENDPOINTS = {
   LOGIN: '/auth/login',
   LOGOUT: '/auth/logout',
   REFRESH: '/auth/refresh-token',
   FORGOT_PASSWORD: '/auth/forgot-password',
-  VERIFY_OTP: '/auth/verify-otp',
   RESET_PASSWORD: '/auth/reset-password',
-  ME: '/auth/profile',
+  PROFILE: '/auth/profile',
 } as const;
 
 export const authApi = {
   login: async (payload: LoginRequest): Promise<{ data: ApiResponse<LoginResponse> }> => {
     const body = toBackendLoginRequest(payload.email, payload.password);
     if (Config.ENABLE_LOGS) {
-      console.log('[LOGIN] POST', AUTH_ENDPOINTS.LOGIN, 'body.username=', body.username);
+      console.log('[LOGIN] POST', AUTH_ENDPOINTS.LOGIN, 'username=', body.username);
     }
 
     const response = await apiClient.post<ApiResponse<BackendAuthResponse>>(
       AUTH_ENDPOINTS.LOGIN,
       body,
     );
+    const envelope = response.data ?? ({} as ApiResponse<BackendAuthResponse>);
+    const raw = (envelope.data ?? envelope) as BackendAuthResponse;
 
-    const envelope = response.data;
-    const raw = envelope?.data;
-    if (Config.ENABLE_LOGS) {
-      console.log(
-        '[LOGIN] response success=',
-        envelope?.success,
-        'hasToken=',
-        !!raw?.token,
-      );
+    if (envelope.success === false) {
+      throw {
+        message: envelope.message || 'Login failed.',
+        statusCode: 400,
+      };
     }
 
-    if (!raw?.token) {
+    const token = raw.token ?? raw.Token;
+    if (!token) {
       throw {
-        message: envelope?.message || 'Login failed. No token returned.',
+        message: 'Login failed. No token returned.',
         statusCode: 401,
       };
     }
 
-    const mapped = mapBackendAuthToLoginResponse({
-      token: raw.token ?? (raw as unknown as { Token?: string }).Token ?? '',
-      refreshToken:
-        raw.refreshToken ?? (raw as unknown as { RefreshToken?: string }).RefreshToken ?? '',
-      expiresAt: raw.expiresAt,
-      userId: raw.userId ?? (raw as unknown as { UserId?: number }).UserId ?? 0,
-      username: raw.username ?? (raw as unknown as { Username?: string }).Username ?? '',
-      email: raw.email ?? (raw as unknown as { Email?: string }).Email ?? payload.email,
-      firstName: raw.firstName ?? (raw as unknown as { FirstName?: string }).FirstName,
-      lastName: raw.lastName ?? (raw as unknown as { LastName?: string }).LastName,
-      roles: raw.roles ?? (raw as unknown as { Roles?: string[] }).Roles,
-    });
+    if (Config.ENABLE_LOGS) {
+      console.log(
+        '[LOGIN] hasToken=',
+        !!token,
+        'roles=',
+        raw.roles ?? raw.Roles ?? raw.role ?? raw.Role,
+      );
+    }
+
+    const mapped = mapBackendAuthToLoginResponse(raw, payload.email);
 
     return {
       data: {
-        success: envelope.success ?? true,
-        message: envelope.message ?? 'Login successful',
+        success: true,
+        message: envelope.message || 'Login successful',
         data: mapped,
       },
     };
   },
 
-  logout: (refreshToken?: string) =>
-    apiClient.post<ApiResponse<null>>(AUTH_ENDPOINTS.LOGOUT, refreshToken ? { refreshToken } : {}),
+  logout: (_refreshToken?: string) => apiClient.post(AUTH_ENDPOINTS.LOGOUT, {}),
+
+  refreshToken: (token: string, refreshToken: string) =>
+    apiClient.post<ApiResponse<BackendAuthResponse>>(AUTH_ENDPOINTS.REFRESH, {
+      token,
+      refreshToken,
+    }),
 
   forgotPassword: (payload: ForgotPasswordRequest) =>
-    apiClient.post<ApiResponse<null>>(AUTH_ENDPOINTS.FORGOT_PASSWORD, payload),
+    apiClient.post(AUTH_ENDPOINTS.FORGOT_PASSWORD, payload),
 
-  verifyOTP: (payload: VerifyOTPRequest) =>
-    apiClient.post<ApiResponse<null>>(AUTH_ENDPOINTS.VERIFY_OTP, payload),
+  verifyOTP: (_payload: VerifyOTPRequest) =>
+    Promise.reject({
+      message: 'OTP verify is not available on DealerManagement.Api.',
+      statusCode: 501,
+    }),
 
   resetPassword: (payload: ResetPasswordRequest) =>
-    apiClient.post<ApiResponse<null>>(AUTH_ENDPOINTS.RESET_PASSWORD, payload),
+    apiClient.post(AUTH_ENDPOINTS.RESET_PASSWORD, {
+      email: payload.email,
+      newPassword: payload.newPassword,
+      token: payload.otp,
+    }),
 
-  getMe: () => apiClient.get(AUTH_ENDPOINTS.ME),
+  getMe: () => apiClient.get(AUTH_ENDPOINTS.PROFILE),
 };

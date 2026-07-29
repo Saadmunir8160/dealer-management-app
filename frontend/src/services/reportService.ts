@@ -76,10 +76,15 @@ const mapRecentOrder = (row: BackendRecentOrder): RecentOrder => ({
 
 const mapDashboardDto = (dash: BackendDashboardDto): DashboardResponse | null => {
   const recentRaw = dash.recentOrders ?? dash.RecentOrders;
-  // UCIC portal shape: has recentOrders array (even if empty) or nested stats
-  if (!recentRaw && !dash.stats && dash.totalOrders === undefined && dash.TotalOrders === undefined) {
-    return null;
-  }
+  const hasCore =
+    dash.totalOrders !== undefined ||
+    dash.TotalOrders !== undefined ||
+    dash.pendingOrders !== undefined ||
+    dash.PendingOrders !== undefined ||
+    Array.isArray(recentRaw) ||
+    !!dash.stats;
+
+  if (!hasCore) return null;
 
   if (dash.stats && Array.isArray(recentRaw)) {
     return {
@@ -100,7 +105,7 @@ const mapDashboardDto = (dash: BackendDashboardDto): DashboardResponse | null =>
     },
     recentOrders: (recentRaw ?? []).map(mapRecentOrder),
     supportPhone: dash.supportPhone ?? dash.SupportPhone ?? '+966 11 234 5678',
-    supportEmail: dash.supportEmail ?? dash.SupportEmail ?? 'support@ucic.com',
+    supportEmail: dash.supportEmail ?? dash.SupportEmail ?? 'support@dealerapp.com',
   };
 };
 
@@ -112,12 +117,47 @@ export const ReportService = {
         const response = await mockGetDashboard();
         return response.data;
       }
-      const response = await reportApi.getDashboard();
-      const mapped = mapDashboardDto((response.data?.data ?? {}) as BackendDashboardDto);
-      if (!mapped) {
-        throw new Error('Invalid dashboard response from API');
+      try {
+        const response = await reportApi.getDashboard();
+        const mapped = mapDashboardDto((response.data?.data ?? {}) as BackendDashboardDto);
+        if (mapped) return mapped;
+      } catch {
+        // Fall back to orders list if dashboard mapping fails
       }
-      return mapped;
+
+      const { OrderService } = await import('./orderService');
+      const list = await OrderService.fetchOrders({ page: 1, limit: 50 });
+      const recent = list.data.slice(0, 8).map(o => ({
+        orderId: o.orderId,
+        couponNumber: o.couponNumber ?? undefined,
+        erpOrderNumber: o.erpOrderNumber ?? null,
+        orderDate: o.orderDate,
+        status: o.status,
+        deliveryArea: o.deliveryArea ?? null,
+        driver: o.driver ?? null,
+        vehicle: o.vehicle ?? null,
+        dealerName: o.dealerName,
+        totalAmount: o.totalAmount,
+      }));
+      const pendingOrders = list.data.filter(o => o.status === 'Pending').length;
+      const now = new Date();
+      const ordersThisMonth = list.data.filter(o => {
+        const d = new Date(o.orderDate);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      }).length;
+
+      return {
+        stats: {
+          totalOrders: list.pagination.total,
+          pendingOrders,
+          availableCredit: 0,
+          creditExpiry: null,
+          ordersThisMonth,
+        },
+        recentOrders: recent,
+        supportPhone: '+966 11 234 5678',
+        supportEmail: 'support@dealerapp.com',
+      };
     } catch (error) {
       throw parseApiError(error);
     }

@@ -12,7 +12,8 @@ export type AuthStackParamList = {
 export type AppStackParamList = {
   BottomTabs: undefined;
   OrderDetail: { orderId: number };
-  CreateOrder: { dealerId?: number };
+  CreateOrder: { dealerId?: number; mode?: 'voice' | 'manual' };
+  VoiceOrder: { dealerId?: number };
   EditProfile: undefined;
   ChangePassword: undefined;
   Settings: undefined;

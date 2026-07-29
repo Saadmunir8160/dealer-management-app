@@ -25,6 +25,13 @@ public static class DependencyInjection
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<IDashboardService, DashboardService>();
+        services.AddScoped<IVoiceCommandParser, VoiceCommandParser>();
+        services.AddScoped<IVoiceOrderService, VoiceOrderService>();
+        services.AddScoped<IVoiceOrderExtractionService, VoiceOrderExtractionService>();
+        services.AddHttpClient("VoiceAi", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(45);
+        });
 
         return services;
     }

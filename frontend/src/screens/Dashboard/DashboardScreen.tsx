@@ -54,7 +54,20 @@ const DashboardScreen = () => {
       const dashRes = await ReportService.getDashboard();
       setData(dashRes);
     } catch {
-      showError('Error', 'Failed to load dashboard');
+      // Keep UI usable; toast explains API/auth failure (re-login often fixes it)
+      setData({
+        stats: {
+          totalOrders: 0,
+          pendingOrders: 0,
+          availableCredit: 0,
+          creditExpiry: null,
+          ordersThisMonth: 0,
+        },
+        recentOrders: [],
+        supportPhone: '+966 11 234 5678',
+        supportEmail: 'support@ucic.com',
+      });
+      showError('Error', 'Failed to load dashboard. Logout and login again, then pull to refresh.');
     } finally {
       setIsLoading(false);
       setRefreshing(false);

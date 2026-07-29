@@ -1,12 +1,30 @@
 import { Product } from '@types';
+import { inferProductUnit } from './productUnit';
 
 interface BackendProductDto {
+  productId?: number;
+  ProductId?: number;
   id?: number;
   Id?: number;
+  name?: string;
+  Name?: string;
   productName?: string;
   ProductName?: string;
+  productCode?: string | null;
+  ProductCode?: string | null;
+  arabicName?: string | null;
+  ArabicName?: string | null;
   sku?: string | null;
   SKU?: string | null;
+  Sku?: string | null;
+  code?: string | null;
+  Code?: string | null;
+  type?: string | null;
+  Type?: string | null;
+  unitOfMeasure?: string | null;
+  UnitOfMeasure?: string | null;
+  price?: number;
+  Price?: number;
   unitPrice?: number;
   UnitPrice?: number;
   isActive?: boolean;
@@ -15,29 +33,41 @@ interface BackendProductDto {
   CreatedDate?: string;
 }
 
-export const mapBackendProduct = (dto: BackendProductDto): Product => ({
-  productId: dto.id ?? dto.Id ?? 0,
-  productName: dto.productName ?? dto.ProductName ?? '—',
-  sku: dto.sku ?? dto.SKU ?? null,
-  price: Number(dto.unitPrice ?? dto.UnitPrice ?? 0),
-  stock: 0,
-  status: dto.isActive ?? dto.IsActive ?? true,
-  createdDate: String(dto.createdDate ?? dto.CreatedDate ?? new Date().toISOString()),
-});
+export const mapBackendProduct = (dto: BackendProductDto): Product => {
+  const productName = dto.name ?? dto.Name ?? dto.productName ?? dto.ProductName ?? '—';
+  const sku = dto.sku ?? dto.SKU ?? dto.Sku ?? null;
+  const code =
+    dto.code ?? dto.Code ?? dto.productCode ?? dto.ProductCode ?? null;
+  const type = dto.type ?? dto.Type ?? dto.unitOfMeasure ?? dto.UnitOfMeasure ?? null;
+
+  return {
+    productId: dto.productId ?? dto.ProductId ?? dto.id ?? dto.Id ?? 0,
+    productName,
+    sku,
+    code,
+    arabicName: dto.arabicName ?? dto.ArabicName ?? null,
+    type,
+    unit: inferProductUnit(type, productName, sku, code),
+    price: Number(dto.price ?? dto.Price ?? dto.unitPrice ?? dto.UnitPrice ?? 0),
+    stock: 0,
+    status: dto.isActive ?? dto.IsActive ?? true,
+    createdDate: String(dto.createdDate ?? dto.CreatedDate ?? new Date().toISOString()),
+  };
+};
 
 export const mapBackendProductsResponse = (axiosResponse: {
-  data?: {
-    success?: boolean;
-    data?: BackendProductDto[] | { items?: BackendProductDto[]; Items?: BackendProductDto[] };
-  };
+  data?: any;
 }): Product[] => {
-  const payload = axiosResponse?.data?.data;
+  const envelope = axiosResponse?.data;
+  // DealerManagement.Api: { success, data: { items, totalCount, ... } }
+  const payload = envelope?.data ?? envelope?.Data ?? envelope;
+
+  let list: BackendProductDto[] = [];
   if (Array.isArray(payload)) {
-    return payload.map(mapBackendProduct).filter(p => p.productId > 0);
+    list = payload;
+  } else if (payload && typeof payload === 'object') {
+    list = payload.items ?? payload.Items ?? payload.data ?? payload.Data ?? [];
   }
-  if (payload && typeof payload === 'object') {
-    const items = payload.items ?? payload.Items ?? [];
-    return items.map(mapBackendProduct).filter(p => p.productId > 0);
-  }
-  return [];
+
+  return (list || []).map(mapBackendProduct).filter(p => p.productId > 0);
 };

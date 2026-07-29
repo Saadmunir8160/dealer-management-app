@@ -26,7 +26,6 @@ export interface Order {
   totalAmount: number;
   status: OrderStatus;
   items: OrderItem[];
-  // UCIC fields
   couponNumber?: string;
   erpOrderNumber?: string | null;
   deliveryArea?: string | null;
@@ -55,8 +54,15 @@ export interface CreateOrderRequest {
   couponNumber?: string;
   erpOrderNumber?: string;
   deliveryArea?: string;
+  deliveryDate?: string;
   driver?: string;
   vehicle?: string;
+  notes?: string;
+  /** Optional — not used by DealerManagement.Api */
+  coverageAreaId?: number;
+  cityId?: number;
+  zipCode?: string;
+  gpsCoordinates?: string;
 }
 
 export interface CreateOrderItemRequest {

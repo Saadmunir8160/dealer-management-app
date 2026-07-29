@@ -21,8 +21,9 @@ if (!string.IsNullOrWhiteSpace(port))
 }
 else
 {
-    // Do not bind localhost-only — physical devices / APK need LAN access
-    builder.WebHost.UseUrls("http://0.0.0.0:5246");
+    // IPv4 all interfaces (LAN/APK) + IPv6 localhost so browsers that resolve
+    // "localhost" → ::1 do not get Axios Network Error.
+    builder.WebHost.UseUrls("http://0.0.0.0:5246", "http://[::]:5246");
 }
 
 // Configure Serilog
@@ -155,8 +156,8 @@ app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseSwagger();
 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dealer Management API v1"));
 
-app.UseRateLimiter();
 app.UseCors("AllowReactNative");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

@@ -8,6 +8,7 @@ import {
   Platform,
   ImageBackground,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '@types';
@@ -36,7 +37,7 @@ const loginSchema = yup.object({
 
 type LoginForm = yup.InferType<typeof loginSchema>;
 
-const LoginScreen: React.FC<Props> = () => {
+const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const { login, isLoading } = useAuth();
   const { showError } = useToast();
 
@@ -118,6 +119,13 @@ const LoginScreen: React.FC<Props> = () => {
               )}
             />
 
+            <TouchableOpacity
+              onPress={() => navigation.navigate('ForgotPassword')}
+              style={styles.forgotWrap}
+            >
+              <Text style={styles.forgotText}>Forgot Password?</Text>
+            </TouchableOpacity>
+
             <AppButton
               title="Login"
               onPress={handleSubmit(onSubmit)}
@@ -187,6 +195,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   inputGap: { marginBottom: Spacing[3] },
+  forgotWrap: {
+    alignSelf: 'flex-end',
+    marginBottom: Spacing[3],
+    marginTop: -Spacing[1],
+  },
+  forgotText: {
+    fontSize: 13,
+    color: BRAND_BLUE,
+    fontWeight: '600',
+  },
   loginBtn: {
     backgroundColor: LOGIN_ORANGE,
     borderRadius: BorderRadius.lg,

@@ -8,7 +8,7 @@ import {
   PaginatedResponse,
 } from '@types';
 import { parseApiError } from '@utils/errorHandler';
-import { mapBackendDealersList } from '@utils/dealerMappers';
+import { mapBackendDealer, mapBackendDealersList } from '@utils/dealerMappers';
 import {
   mockGetDealers,
   mockGetDealerById,
@@ -28,17 +28,28 @@ export const DealerService = {
       }
       const response = await dealerApi.getAll(params);
       const mapped = mapBackendDealersList(response.data);
+      const envelope = response.data as {
+        data?: { totalCount?: number; TotalCount?: number; totalPages?: number; TotalPages?: number; pageNumber?: number; PageNumber?: number; pageSize?: number; PageSize?: number };
+        message?: string;
+      };
+      const pageData = envelope?.data;
+      const total = Number(pageData?.totalCount ?? pageData?.TotalCount ?? mapped.length);
+      const totalPages = Number(
+        pageData?.totalPages ??
+          pageData?.TotalPages ??
+          Math.max(1, Math.ceil(total / (params.limit || 1))),
+      );
       return {
         success: true,
-        message: '',
+        message: envelope?.message ?? '',
         data: mapped,
         pagination: {
-          page: params.page,
-          limit: params.limit,
-          total: mapped.length,
-          totalPages: 1,
-          hasNextPage: false,
-          hasPrevPage: false,
+          page: Number(pageData?.pageNumber ?? pageData?.PageNumber ?? params.page),
+          limit: Number(pageData?.pageSize ?? pageData?.PageSize ?? params.limit),
+          total,
+          totalPages,
+          hasNextPage: params.page < totalPages,
+          hasPrevPage: params.page > 1,
         },
       };
     } catch (error) {
@@ -54,7 +65,8 @@ export const DealerService = {
         return response.data;
       }
       const response = await dealerApi.getById(id);
-      return response.data.data;
+      const dto = response.data?.data ?? response.data;
+      return mapBackendDealer(dto ?? {});
     } catch (error) {
       throw parseApiError(error);
     }
@@ -68,7 +80,7 @@ export const DealerService = {
         return response.data;
       }
       const response = await dealerApi.create(payload);
-      return response.data.data;
+      return mapBackendDealer(response.data?.data ?? response.data ?? {});
     } catch (error) {
       throw parseApiError(error);
     }
@@ -100,7 +112,7 @@ export const DealerService = {
         return response.data;
       }
       const response = await dealerApi.update({ ...payload, dealerId: id } as any);
-      return response.data.data;
+      return mapBackendDealer(response.data?.data ?? response.data ?? {});
     } catch (error) {
       throw parseApiError(error);
     }

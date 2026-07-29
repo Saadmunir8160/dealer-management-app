@@ -22,7 +22,6 @@ public static class DatabaseInitializer
             // SQL Server migrations are incompatible with Postgres — create schema from model
             await db.Database.EnsureCreatedAsync(ct);
             logger.LogInformation("Postgres schema ensured via EnsureCreated");
-            await EnsureOrderUcicColumnsAsync(db, logger, ct);
         }
         else
         {
@@ -30,23 +29,39 @@ public static class DatabaseInitializer
             logger.LogInformation("SQL Server migrations applied");
         }
 
+        await EnsureOrderUcicColumnsAsync(db, logger, isPostgres, ct);
         await EnsureAdminAsync(db, logger, ct);
         await EnsureCatalogAsync(db, logger, ct);
     }
 
     /// <summary>
-    /// EnsureCreated does not alter existing tables — add UCIC columns if missing.
+    /// EnsureCreated / older migrations may lack UCIC columns — add if missing.
     /// </summary>
-    private static async Task EnsureOrderUcicColumnsAsync(AppDbContext db, ILogger logger, CancellationToken ct)
+    private static async Task EnsureOrderUcicColumnsAsync(AppDbContext db, ILogger logger, bool isPostgres, CancellationToken ct)
     {
-        var sql = """
-            ALTER TABLE "Sales"."Orders" ADD COLUMN IF NOT EXISTS "CouponNumber" character varying(50);
-            ALTER TABLE "Sales"."Orders" ADD COLUMN IF NOT EXISTS "ErpOrderNumber" character varying(100);
-            ALTER TABLE "Sales"."Orders" ADD COLUMN IF NOT EXISTS "DeliveryArea" character varying(200);
-            ALTER TABLE "Sales"."Orders" ADD COLUMN IF NOT EXISTS "Driver" character varying(150);
-            ALTER TABLE "Sales"."Orders" ADD COLUMN IF NOT EXISTS "Vehicle" character varying(100);
-            """;
-        await db.Database.ExecuteSqlRawAsync(sql, ct);
+        if (isPostgres)
+        {
+            var sql = """
+                ALTER TABLE "Sales"."Orders" ADD COLUMN IF NOT EXISTS "CouponNumber" character varying(50);
+                ALTER TABLE "Sales"."Orders" ADD COLUMN IF NOT EXISTS "ErpOrderNumber" character varying(100);
+                ALTER TABLE "Sales"."Orders" ADD COLUMN IF NOT EXISTS "DeliveryArea" character varying(200);
+                ALTER TABLE "Sales"."Orders" ADD COLUMN IF NOT EXISTS "Driver" character varying(150);
+                ALTER TABLE "Sales"."Orders" ADD COLUMN IF NOT EXISTS "Vehicle" character varying(100);
+                """;
+            await db.Database.ExecuteSqlRawAsync(sql, ct);
+        }
+        else
+        {
+            // SQL Server: add columns only when missing
+            var sql = """
+                IF COL_LENGTH('Sales.Orders', 'CouponNumber') IS NULL ALTER TABLE Sales.Orders ADD CouponNumber nvarchar(50) NULL;
+                IF COL_LENGTH('Sales.Orders', 'ErpOrderNumber') IS NULL ALTER TABLE Sales.Orders ADD ErpOrderNumber nvarchar(100) NULL;
+                IF COL_LENGTH('Sales.Orders', 'DeliveryArea') IS NULL ALTER TABLE Sales.Orders ADD DeliveryArea nvarchar(200) NULL;
+                IF COL_LENGTH('Sales.Orders', 'Driver') IS NULL ALTER TABLE Sales.Orders ADD Driver nvarchar(150) NULL;
+                IF COL_LENGTH('Sales.Orders', 'Vehicle') IS NULL ALTER TABLE Sales.Orders ADD Vehicle nvarchar(100) NULL;
+                """;
+            await db.Database.ExecuteSqlRawAsync(sql, ct);
+        }
         logger.LogInformation("Ensured UCIC order columns on Sales.Orders");
     }
 

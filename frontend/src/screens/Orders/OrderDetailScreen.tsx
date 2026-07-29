@@ -40,7 +40,9 @@ const OrderDetailScreen: React.FC<Props> = ({ route }) => {
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
 
   useEffect(() => {
     OrderService.fetchOrderById(String(orderId))
@@ -63,6 +65,24 @@ const OrderDetailScreen: React.FC<Props> = ({ route }) => {
     }
   };
 
+  const handleConfirm = async () => {
+    setIsConfirming(true);
+    try {
+      const updated = await OrderService.confirmOrder(String(orderId));
+      setOrder(updated);
+      showSuccess('Confirmed', 'Order has been confirmed');
+    } catch (e: unknown) {
+      const msg =
+        e && typeof e === 'object' && 'message' in e
+          ? String((e as { message?: string }).message)
+          : 'Failed to confirm order';
+      showError('Error', msg || 'Failed to confirm order');
+    } finally {
+      setIsConfirming(false);
+      setShowConfirmDialog(false);
+    }
+  };
+
   if (isLoading) return <AppLoader message="Loading order..." />;
   if (!order) {
     return (
@@ -75,6 +95,7 @@ const OrderDetailScreen: React.FC<Props> = ({ route }) => {
   }
 
   const canCancel = order.status !== 'Cancelled' && order.status !== 'Delivered';
+  const canConfirm = order.status === 'Pending';
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -127,7 +148,16 @@ const OrderDetailScreen: React.FC<Props> = ({ route }) => {
           </View>
         </AppCard>
 
-        {/* ── Cancel Button ──────────────────────────────────────────── */}
+        {canConfirm && (
+          <AppButton
+            title="Confirm Order"
+            onPress={() => setShowConfirmDialog(true)}
+            fullWidth
+            size="lg"
+            style={styles.confirmBtn}
+          />
+        )}
+
         {canCancel && (
           <AppButton
             title="Cancel Order"
@@ -138,6 +168,16 @@ const OrderDetailScreen: React.FC<Props> = ({ route }) => {
           />
         )}
       </ScrollView>
+
+      <ConfirmationDialog
+        visible={showConfirmDialog}
+        title="Confirm Order"
+        message={`Confirm Order #${order.orderId}? This matches the UCIC web confirm action.`}
+        confirmLabel="Confirm"
+        isLoading={isConfirming}
+        onConfirm={handleConfirm}
+        onCancel={() => setShowConfirmDialog(false)}
+      />
 
       <ConfirmationDialog
         visible={showCancelDialog}
@@ -182,6 +222,7 @@ const styles = StyleSheet.create({
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: Spacing[4], marginTop: Spacing[2] },
   totalLabel: { ...Typography.h5, color: Colors.textPrimary },
   totalValue: { ...Typography.h5, color: Colors.primary },
+  confirmBtn: { marginBottom: Spacing[3] },
 });
 
 export default OrderDetailScreen;

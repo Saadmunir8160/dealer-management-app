@@ -126,9 +126,15 @@ const OrdersScreen = () => {
         </View>
         <TouchableOpacity
           style={styles.newOrderBtn}
-          onPress={() => goTo('CreateOrder', {})}
+          onPress={() => goTo('CreateOrder', { mode: 'manual' })}
         >
           <Text style={styles.newOrderText}>+ {t('newOrder')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.newOrderBtn, styles.voiceOrderBtn]}
+          onPress={() => goTo('CreateOrder', { mode: 'voice' })}
+        >
+          <Text style={styles.newOrderText}>🎤 Voice</Text>
         </TouchableOpacity>
       </View>
 
@@ -207,6 +213,9 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing[3],
     paddingVertical: Spacing[2],
+  },
+  voiceOrderBtn: {
+    backgroundColor: Colors.primary,
   },
   newOrderText: { ...Typography.label, color: Colors.white, fontWeight: '700' },
   filters: {

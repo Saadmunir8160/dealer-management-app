@@ -32,26 +32,31 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     const url = (originalRequest?.url ?? '').toLowerCase();
-    const isAuthCall = url.includes('/auth/login') || url.includes('/auth/refresh');
+    const isAuthCall =
+      url.includes('/auth/login') || url.includes('/auth/refresh-token');
 
     if (error.response?.status === 401 && !originalRequest?._retry && !isAuthCall) {
       if (originalRequest) originalRequest._retry = true;
+
       try {
-        const refreshToken = await StorageService.getItem<string>(STORAGE_KEYS.REFRESH_TOKEN);
-        const accessToken = await StorageService.getItem<string>(STORAGE_KEYS.ACCESS_TOKEN);
-        if (refreshToken && accessToken) {
-          const response = await axios.post(`${Config.API_BASE_URL}/auth/refresh-token`, {
-            token: accessToken,
-            refreshToken,
-          });
-          const next =
-            response.data?.data?.token ??
-            response.data?.data?.accessToken ??
-            response.data?.data?.Token;
-          if (next) {
-            await StorageService.setItem(STORAGE_KEYS.ACCESS_TOKEN, next);
+        const [accessToken, refreshToken] = await Promise.all([
+          StorageService.getItem<string>(STORAGE_KEYS.ACCESS_TOKEN),
+          StorageService.getItem<string>(STORAGE_KEYS.REFRESH_TOKEN),
+        ]);
+        if (accessToken && refreshToken) {
+          const refreshRes = await axios.post(
+            `${Config.API_BASE_URL}/auth/refresh-token`,
+            { token: accessToken, refreshToken },
+            { timeout: Config.API_TIMEOUT },
+          );
+          const data = refreshRes.data?.data ?? refreshRes.data;
+          const newToken = data?.token ?? data?.Token;
+          const newRefresh = data?.refreshToken ?? data?.RefreshToken ?? refreshToken;
+          if (newToken) {
+            await StorageService.setItem(STORAGE_KEYS.ACCESS_TOKEN, newToken);
+            await StorageService.setItem(STORAGE_KEYS.REFRESH_TOKEN, newRefresh);
             if (originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${next}`;
+              originalRequest.headers.Authorization = `Bearer ${newToken}`;
             }
             return apiClient(originalRequest);
           }
@@ -59,6 +64,7 @@ apiClient.interceptors.response.use(
       } catch {
         // fall through to clear session
       }
+
       await StorageService.multiRemove([
         STORAGE_KEYS.ACCESS_TOKEN,
         STORAGE_KEYS.REFRESH_TOKEN,

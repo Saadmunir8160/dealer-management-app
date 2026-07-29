@@ -2,17 +2,16 @@
   "expo": {
     "name": "UCIC Customer Portal",
     "slug": "ucic-customer-portal",
-    "version": "1.0.7",
+    "version": "1.0.9",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "runtimeVersion": "1.0.7",
+    "newArchEnabled": false,
+    "runtimeVersion": "1.0.9",
     "updates": {
-      "url": "https://u.expo.dev/e5953b17-8a0f-42e3-9ae2-59b4b577ad6d",
+      "url": "https://u.expo.dev/ca204142-be2c-4e3c-bef4-8f680286bde6",
       "fallbackToCacheTimeout": 0,
       "checkAutomatically": "ON_LOAD"
     },
-    "icon": "./assets/logo-light.png",
     "splash": {
       "image": "./assets/logo-light.png",
       "resizeMode": "contain",
@@ -23,29 +22,44 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ucic.customerportal"
+      "bundleIdentifier": "com.ucic.customerportal",
+      "buildNumber": "10",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Microphone is used for voice ordering.",
+        "NSSpeechRecognitionUsageDescription": "Speech recognition is used to fill order fields from voice."
+      }
     },
     "android": {
       "package": "com.ucic.customerportal",
-      "versionCode": 9,
+      "versionCode": 10,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo-light.png",
         "backgroundColor": "#1E40AF"
       },
       "permissions": [
         "INTERNET",
-        "ACCESS_NETWORK_STATE"
-      ],
-      "usesCleartextTraffic": true
+        "ACCESS_NETWORK_STATE",
+        "RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "./plugins/withNetworkSecurityConfig.js",
       "expo-updates",
       [
+        "@react-native-voice/voice",
+        {
+          "microphonePermission": "Microphone is used for voice ordering.",
+          "speechRecognitionPermission": "Speech recognition is used to fill order fields from voice."
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {
-            "usesCleartextTraffic": true
+            "usesCleartextTraffic": true,
+            "enableJetifier": true
+          },
+          "ios": {
+            "deploymentTarget": "15.1"
           }
         }
       ]
@@ -55,9 +69,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "e5953b17-8a0f-42e3-9ae2-59b4b577ad6d"
+        "projectId": "ca204142-be2c-4e3c-bef4-8f680286bde6"
       }
     },
-    "owner": "khanasad"
+    "owner": "saadkahns-team"
   }
 }
