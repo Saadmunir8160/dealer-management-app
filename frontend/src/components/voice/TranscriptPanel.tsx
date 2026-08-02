@@ -1,68 +1,42 @@
 import React, { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Colors, Typography, Spacing, BorderRadius } from '@theme';
-import AppInput from '@components/inputs/AppInput';
-import AppButton from '@components/buttons/AppButton';
+import { Typography, Spacing, BorderRadius, useThemedStyles } from '@theme';
+import type { AppColors } from '@theme/colors';
 
 interface Props {
   liveText: string;
-  typedCommand: string;
-  onChangeTyped: (text: string) => void;
-  onExtract: () => void;
-  extracting: boolean;
-  extractLabel?: string;
 }
 
-const TranscriptPanel: React.FC<Props> = ({
-  liveText,
-  typedCommand,
-  onChangeTyped,
-  onExtract,
-  extracting,
-  extractLabel = 'Extract',
-}) => (
-  <View style={styles.wrap}>
-    <View style={styles.box}>
-      <Text style={styles.title}>Live transcript</Text>
-      <Text style={styles.body}>{liveText || '—'}</Text>
-    </View>
+const createStyles = (c: AppColors) =>
+  StyleSheet.create({
+    wrap: { marginTop: Spacing[2] },
+    box: {
+      backgroundColor: c.gray100,
+      borderRadius: BorderRadius.xl,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.border,
+      padding: Spacing[4],
+      gap: Spacing[1],
+    },
+    title: { ...Typography.label, color: c.primary, fontWeight: '700' },
+    body: { ...Typography.body, color: c.textPrimary, lineHeight: 22 },
+    placeholder: { color: c.textDisabled },
+  });
 
-    <Text style={styles.typeLabel}>Or paste / type transcript</Text>
-    <View style={styles.typeRow}>
-      <View style={{ flex: 1 }}>
-        <AppInput
-          value={typedCommand}
-          onChangeText={onChangeTyped}
-          placeholder=""
-          filled
-          onSubmitEditing={onExtract}
-        />
+const TranscriptPanel: React.FC<Props> = ({ liveText }) => {
+  const styles = useThemedStyles(createStyles);
+  const empty = !liveText || liveText === '—';
+
+  return (
+    <View style={styles.wrap}>
+      <View style={styles.box}>
+        <Text style={styles.title}>Live transcript</Text>
+        <Text style={[styles.body, empty && styles.placeholder]}>
+          {empty ? '—' : liveText}
+        </Text>
       </View>
-      <AppButton
-        title={extracting ? '…' : extractLabel}
-        onPress={onExtract}
-        disabled={extracting || !typedCommand.trim()}
-        style={styles.runBtn}
-      />
     </View>
-  </View>
-);
-
-const styles = StyleSheet.create({
-  wrap: { gap: Spacing[2], marginBottom: Spacing[3] },
-  box: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing[3],
-    gap: Spacing[1],
-  },
-  title: { ...Typography.label, color: Colors.primaryDark },
-  body: { ...Typography.body, color: Colors.textPrimary, lineHeight: 22 },
-  typeLabel: { ...Typography.caption, color: Colors.textSecondary },
-  typeRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing[2] },
-  runBtn: { minWidth: 96, marginTop: 2 },
-});
+  );
+};
 
 export default memo(TranscriptPanel);

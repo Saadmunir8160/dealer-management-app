@@ -26,12 +26,13 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppStackParamList, Dealer } from '@types';
 import { useDealers } from '@hooks';
 import { Colors, Typography, Spacing, BorderRadius } from '@theme';
+import { useLayoutMetrics } from '@theme/layout';
 import { SearchBar, StatusChip, Avatar, EmptyState } from '@components/common';
 import AppCard from '@components/cards/AppCard';
 import SkeletonLoader from '@components/loaders/SkeletonLoader';
@@ -49,6 +50,8 @@ const FILTERS: { label: string; value: FilterType }[] = [
 
 const DealersScreen = () => {
   const navigation = useNavigation<NavProp>();
+  const insets = useSafeAreaInsets();
+  const { scrollBottomPad } = useLayoutMetrics();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
 
@@ -91,7 +94,7 @@ const DealersScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <Text style={styles.title}>Dealers</Text>
         <Text style={styles.subtitle}>{dealers.length} total dealers</Text>
@@ -127,7 +130,8 @@ const DealersScreen = () => {
           data={dealers}
           keyExtractor={item => String(item.dealerId)}
           renderItem={renderDealer}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: scrollBottomPad + 72 }]}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl refreshing={false} onRefresh={refetch} tintColor={Colors.primary} />
           }
@@ -145,9 +149,10 @@ const DealersScreen = () => {
 
       {/* ── FAB: Add Dealer ──────────────────────────────────────────── */}
       <TouchableOpacity
-        style={styles.fab}
+        style={[styles.fab, { bottom: Math.max(insets.bottom, Spacing[4]) + Spacing[2] }]}
         onPress={() => navigation.navigate('CreateDealer')}
         activeOpacity={0.85}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
@@ -178,7 +183,7 @@ const styles = StyleSheet.create({
   filterChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   filterText: { ...Typography.label, color: Colors.textSecondary },
   filterTextActive: { color: Colors.white },
-  list: { paddingHorizontal: Spacing[4], paddingBottom: 100 },
+  list: { paddingHorizontal: Spacing[4], paddingBottom: 24 },
   card: { marginBottom: Spacing[3] },
   cardRow: { flexDirection: 'row', alignItems: 'center' },
   cardContent: { flex: 1, marginLeft: Spacing[3] },
@@ -203,7 +208,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 6,
+    elevation: 8,
+    zIndex: 20,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,

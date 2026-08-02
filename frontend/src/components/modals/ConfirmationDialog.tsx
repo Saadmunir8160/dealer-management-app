@@ -1,9 +1,6 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// src/components/modals/ConfirmationDialog.tsx
-// Reusable confirmation dialog with title, message, and action buttons.
-// ─────────────────────────────────────────────────────────────────────────────
 import React from 'react';
-import { View, Text, Modal, StyleSheet, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, Modal, StyleSheet, TouchableWithoutFeedback, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '@theme';
 import AppButton from '@components/buttons/AppButton';
 
@@ -29,37 +26,51 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   isLoading = false,
   onConfirm,
   onCancel,
-}) => (
-  <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-    <TouchableWithoutFeedback onPress={onCancel}>
-      <View style={styles.overlay}>
-        <TouchableWithoutFeedback>
-          <View style={styles.dialog}>
-            <Text style={styles.title}>{title}</Text>
-            <Text style={styles.message}>{message}</Text>
-            <View style={styles.actions}>
-              <AppButton
-                title={cancelLabel}
-                onPress={onCancel}
-                variant="outline"
-                size="md"
-                style={styles.cancelBtn}
-              />
-              <AppButton
-                title={confirmLabel}
-                onPress={onConfirm}
-                variant={confirmVariant}
-                size="md"
-                isLoading={isLoading}
-                style={styles.confirmBtn}
-              />
+}) => {
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const dialogWidth = Math.min(width - 48, 420);
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <TouchableWithoutFeedback onPress={onCancel}>
+        <View
+          style={[
+            styles.overlay,
+            {
+              paddingTop: Math.max(insets.top, Spacing[6]),
+              paddingBottom: Math.max(insets.bottom, Spacing[6]),
+            },
+          ]}
+        >
+          <TouchableWithoutFeedback>
+            <View style={[styles.dialog, { width: dialogWidth }]}>
+              <Text style={styles.title}>{title}</Text>
+              <Text style={styles.message}>{message}</Text>
+              <View style={styles.actions}>
+                <AppButton
+                  title={cancelLabel}
+                  onPress={onCancel}
+                  variant="outline"
+                  size="md"
+                  style={styles.cancelBtn}
+                />
+                <AppButton
+                  title={confirmLabel}
+                  onPress={onConfirm}
+                  variant={confirmVariant}
+                  size="md"
+                  isLoading={isLoading}
+                  style={styles.confirmBtn}
+                />
+              </View>
             </View>
-          </View>
-        </TouchableWithoutFeedback>
-      </View>
-    </TouchableWithoutFeedback>
-  </Modal>
-);
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
+  );
+};
 
 const styles = StyleSheet.create({
   overlay: {
@@ -67,10 +78,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: Spacing[6],
+    paddingHorizontal: Spacing[6],
   },
   dialog: {
-    width: '100%',
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.xl,
     padding: Spacing[5],

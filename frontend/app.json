@@ -1,15 +1,15 @@
 {
   "expo": {
     "name": "UCIC Customer Portal",
-    "slug": "yahyakhan",
-    "version": "1.0.13",
+    "slug": "moeez",
+    "version": "1.0.15",
     "orientation": "portrait",
-    "icon": "./assets/ucic-logo.png",
+    "icon": "./assets/ucic-icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "runtimeVersion": "1.0.13",
+    "runtimeVersion": "1.0.15",
     "updates": {
-      "url": "https://u.expo.dev/37684f22-bb57-4f27-a763-d23f5d6fcc52",
+      "url": "https://u.expo.dev/a638c699-3c81-4ea1-b2db-8c3a6832f9c2",
       "fallbackToCacheTimeout": 0,
       "checkAutomatically": "ON_LOAD"
     },
@@ -24,7 +24,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ucic.customerportal",
-      "buildNumber": "14",
+      "buildNumber": "16",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Microphone is used for voice ordering.",
         "NSSpeechRecognitionUsageDescription": "Speech recognition is used to fill order fields from voice.",
@@ -33,16 +33,28 @@
     },
     "android": {
       "package": "com.ucic.customerportal",
-      "versionCode": 14,
+      "versionCode": 16,
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/ucic-logo.png",
+        "foregroundImage": "./assets/ucic-icon.png",
         "backgroundColor": "#1E40AF"
       },
       "permissions": [
         "INTERNET",
         "ACCESS_NETWORK_STATE",
-        "RECORD_AUDIO"
+        "RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO"
       ]
+    },
+    "androidStatusBar": {
+      "backgroundColor": "#1E40AF",
+      "barStyle": "light-content",
+      "translucent": false
+    },
+    "androidNavigationBar": {
+      "backgroundColor": "#FFFFFF",
+      "barStyle": "dark-content",
+      "enforceContrast": true
     },
     "plugins": [
       "./plugins/withNetworkSecurityConfig.js",
@@ -78,9 +90,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "37684f22-bb57-4f27-a763-d23f5d6fcc52"
+        "projectId": "a638c699-3c81-4ea1-b2db-8c3a6832f9c2"
       }
     },
-    "owner": "khanyahyas-team"
+    "owner": "khanmoeezs-team"
   }
 }

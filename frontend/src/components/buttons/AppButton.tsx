@@ -1,8 +1,4 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// src/components/buttons/AppButton.tsx
-// Primary button component. Supports variants, sizes, loading, and disabled states.
-// ─────────────────────────────────────────────────────────────────────────────
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   TouchableOpacity,
   Text,
@@ -10,10 +6,13 @@ import {
   StyleSheet,
   ViewStyle,
   TextStyle,
+  Platform,
 } from 'react-native';
-import { Colors, Typography, Spacing, BorderRadius } from '@theme';
+import { Typography, Spacing, BorderRadius, Shadows } from '@theme';
+import { useTheme } from '@context';
+import type { AppColors } from '@theme/colors';
 
-type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'accent';
 type Size = 'sm' | 'md' | 'lg';
 
 interface AppButtonProps {
@@ -28,34 +27,53 @@ interface AppButtonProps {
   fullWidth?: boolean;
 }
 
-const variantStyles: Record<Variant, { container: ViewStyle; text: TextStyle }> = {
-  primary: {
-    container: { backgroundColor: Colors.primary },
-    text: { color: Colors.white },
+const sizeStyles: Record<Size, { container: ViewStyle; text: TextStyle }> = {
+  sm: {
+    container: { paddingVertical: Spacing[2], paddingHorizontal: Spacing[3], minHeight: 36 },
+    text: { fontSize: 13 },
   },
-  secondary: {
-    container: { backgroundColor: Colors.secondary },
-    text: { color: Colors.white },
+  md: {
+    container: { paddingVertical: Spacing[3], paddingHorizontal: Spacing[5], minHeight: 48 },
+    text: { fontSize: 14 },
   },
-  outline: {
-    container: { backgroundColor: Colors.transparent, borderWidth: 1.5, borderColor: Colors.primary },
-    text: { color: Colors.primary },
-  },
-  ghost: {
-    container: { backgroundColor: Colors.transparent },
-    text: { color: Colors.primary },
-  },
-  danger: {
-    container: { backgroundColor: Colors.error },
-    text: { color: Colors.white },
+  lg: {
+    container: { paddingVertical: Spacing[4], paddingHorizontal: Spacing[6], minHeight: 56 },
+    text: { fontSize: 16 },
   },
 };
 
-const sizeStyles: Record<Size, { container: ViewStyle; text: TextStyle }> = {
-  sm: { container: { paddingVertical: Spacing[2], paddingHorizontal: Spacing[3] }, text: { fontSize: 12 } },
-  md: { container: { paddingVertical: Spacing[3], paddingHorizontal: Spacing[5] }, text: { fontSize: 14 } },
-  lg: { container: { paddingVertical: Spacing[4], paddingHorizontal: Spacing[6] }, text: { fontSize: 16 } },
-};
+function variantFor(colors: AppColors): Record<Variant, { container: ViewStyle; text: TextStyle }> {
+  return {
+    primary: {
+      container: { backgroundColor: colors.primary },
+      text: { color: colors.white },
+    },
+    secondary: {
+      container: { backgroundColor: colors.primaryDark },
+      text: { color: colors.white },
+    },
+    accent: {
+      container: { backgroundColor: colors.accent },
+      text: { color: colors.white },
+    },
+    outline: {
+      container: {
+        backgroundColor: colors.transparent,
+        borderWidth: 1.5,
+        borderColor: colors.primary,
+      },
+      text: { color: colors.primary },
+    },
+    ghost: {
+      container: { backgroundColor: colors.transparent },
+      text: { color: colors.primary },
+    },
+    danger: {
+      container: { backgroundColor: colors.error },
+      text: { color: colors.white },
+    },
+  };
+}
 
 const AppButton: React.FC<AppButtonProps> = ({
   title,
@@ -68,26 +86,31 @@ const AppButton: React.FC<AppButtonProps> = ({
   textStyle,
   fullWidth = false,
 }) => {
+  const { colors } = useTheme();
+  const variants = useMemo(() => variantFor(colors), [colors]);
   const isDisabled = disabled || isLoading;
+  const isFilled = variant === 'primary' || variant === 'secondary' || variant === 'accent';
 
   return (
     <TouchableOpacity
       onPress={onPress}
       disabled={isDisabled}
-      activeOpacity={0.8}
+      activeOpacity={0.85}
+      accessibilityRole="button"
       style={[
         styles.base,
-        variantStyles[variant].container,
+        variants[variant].container,
         sizeStyles[size].container,
+        isFilled && (Shadows.md as ViewStyle),
         fullWidth && styles.fullWidth,
         isDisabled && styles.disabled,
         style,
       ]}
     >
       {isLoading ? (
-        <ActivityIndicator color={variantStyles[variant].text.color} size="small" />
+        <ActivityIndicator color={variants[variant].text.color} size="small" />
       ) : (
-        <Text style={[styles.text, variantStyles[variant].text, sizeStyles[size].text, textStyle]}>
+        <Text style={[styles.text, variants[variant].text, sizeStyles[size].text, textStyle]}>
           {title}
         </Text>
       )}
@@ -97,10 +120,11 @@ const AppButton: React.FC<AppButtonProps> = ({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
+    overflow: Platform.OS === 'android' ? 'hidden' : 'visible',
   },
   fullWidth: { width: '100%' },
   disabled: { opacity: 0.5 },

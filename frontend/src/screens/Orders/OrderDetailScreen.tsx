@@ -86,7 +86,7 @@ const OrderDetailScreen: React.FC<Props> = ({ route }) => {
   if (isLoading) return <AppLoader message="Loading order..." />;
   if (!order) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Order not found.</Text>
         </View>
@@ -98,7 +98,7 @@ const OrderDetailScreen: React.FC<Props> = ({ route }) => {
   const canConfirm = order.status === 'Pending';
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* ── Header ─────────────────────────────────────────────────── */}
         <AppCard style={styles.headerCard}>

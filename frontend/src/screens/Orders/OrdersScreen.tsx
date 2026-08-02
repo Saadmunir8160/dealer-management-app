@@ -8,16 +8,19 @@ import {
   TouchableOpacity,
   TextInput,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppStackParamList, OrderSummary, OrderStatus } from '@types';
 import { OrderService } from '@services/orderService';
-import { useToast, useLanguage } from '@context';
+import { useToast, useLanguage, useTheme } from '@context';
 import { formatDate } from '@utils';
-import { Colors, Typography, Spacing, BorderRadius } from '@theme';
+import { Typography, Spacing, BorderRadius, useThemedStyles } from '@theme';
+import type { AppColors } from '@theme/colors';
+import { useLayoutMetrics } from '@theme/layout';
 import { PortalHeader, StatusChip, EmptyState } from '@components/common';
+import Screen from '@components/layout/Screen';
 import SkeletonLoader from '@components/loaders/SkeletonLoader';
+import { Ionicons } from '@expo/vector-icons';
 
 type NavProp = NativeStackNavigationProp<AppStackParamList>;
 
@@ -33,6 +36,9 @@ const OrdersScreen = () => {
   const navigation = useNavigation<NavProp>();
   const { showError } = useToast();
   const { t, isRTL } = useLanguage();
+  const { colors } = useTheme();
+  const { scrollBottomPad } = useLayoutMetrics();
+  const styles = useThemedStyles(createOrderStyles);
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
@@ -105,19 +111,19 @@ const OrdersScreen = () => {
           <StatusChip label={item.status} type={getStatusType(item.status)} />
         </View>
         <View style={styles.metaGrid}>
-          <Meta label={t('date')} value={formatDate(item.orderDate)} isRTL={isRTL} />
-          <Meta label={t('items')} value={String(item.itemCount ?? '—')} isRTL={isRTL} />
-          <Meta label={t('deliveryArea')} value={item.deliveryArea ?? '—'} isRTL={isRTL} />
-          <Meta label={t('driver')} value={item.driver ?? '—'} isRTL={isRTL} />
-          <Meta label={t('vehicle')} value={item.vehicle ?? '—'} isRTL={isRTL} />
+          <Meta label={t('date')} value={formatDate(item.orderDate)} isRTL={isRTL} styles={styles} />
+          <Meta label={t('items')} value={String(item.itemCount ?? '—')} isRTL={isRTL} styles={styles} />
+          <Meta label={t('deliveryArea')} value={item.deliveryArea ?? '—'} isRTL={isRTL} styles={styles} />
+          <Meta label={t('driver')} value={item.driver ?? '—'} isRTL={isRTL} styles={styles} />
+          <Meta label={t('vehicle')} value={item.vehicle ?? '—'} isRTL={isRTL} styles={styles} />
         </View>
       </TouchableOpacity>
     ),
-    [goTo, t, isRTL],
+    [goTo, t, isRTL, styles],
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <Screen edges={['top']}>
       <PortalHeader />
       <View style={[styles.pageHeader, isRTL && styles.rowReverse]}>
         <View style={{ flex: 1 }}>
@@ -125,16 +131,17 @@ const OrdersScreen = () => {
           <Text style={[styles.subtitle, isRTL && styles.rtlText]}>{t('orderOverviewSubtitle')}</Text>
         </View>
         <TouchableOpacity
+          style={[styles.newOrderBtn, styles.voiceOrderBtn]}
+          onPress={() => goTo('CreateOrder', { mode: 'voice' })}
+        >
+          <Ionicons name="mic" size={16} color={colors.white} />
+          <Text style={styles.newOrderText}>Voice</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
           style={styles.newOrderBtn}
           onPress={() => goTo('CreateOrder', { mode: 'manual' })}
         >
           <Text style={styles.newOrderText}>+ {t('newOrder')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.newOrderBtn, styles.voiceOrderBtn]}
-          onPress={() => goTo('CreateOrder', { mode: 'voice' })}
-        >
-          <Text style={styles.newOrderText}>🎤 Voice</Text>
         </TouchableOpacity>
       </View>
 
@@ -142,7 +149,7 @@ const OrdersScreen = () => {
         <TextInput
           style={[styles.search, isRTL && styles.rtlText]}
           placeholder={t('searchOrders')}
-          placeholderTextColor={Colors.textDisabled}
+          placeholderTextColor={colors.textDisabled}
           value={search}
           onChangeText={setSearch}
         />
@@ -173,9 +180,10 @@ const OrdersScreen = () => {
           data={filtered}
           keyExtractor={item => String(item.orderId)}
           renderItem={renderOrder}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: scrollBottomPad + 88 }]}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadOrders(); }} tintColor={Colors.primary} />
+            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadOrders(); }} tintColor={colors.primary} />
           }
           ListEmptyComponent={
             <EmptyState
@@ -185,83 +193,103 @@ const OrdersScreen = () => {
           }
         />
       )}
-    </SafeAreaView>
+    </Screen>
   );
 };
 
-const Meta = ({ label, value, isRTL }: { label: string; value: string; isRTL?: boolean }) => (
+const Meta = ({
+  label,
+  value,
+  isRTL,
+  styles,
+}: {
+  label: string;
+  value: string;
+  isRTL?: boolean;
+  styles: ReturnType<typeof createOrderStyles>;
+}) => (
   <View style={styles.metaItem}>
     <Text style={[styles.metaLabel, isRTL && styles.rtlText]}>{label}</Text>
-    <Text style={[styles.metaValue, isRTL && styles.rtlText]} numberOfLines={1}>{value}</Text>
+    <Text style={[styles.metaValue, isRTL && styles.rtlText]} numberOfLines={1}>
+      {value}
+    </Text>
   </View>
 );
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
-  pageHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing[4],
-    paddingTop: Spacing[3],
-    paddingBottom: Spacing[2],
-    gap: Spacing[3],
-  },
-  title: { ...Typography.h4, color: Colors.textPrimary },
-  subtitle: { ...Typography.bodySmall, color: Colors.textSecondary, marginTop: 2 },
-  newOrderBtn: {
-    backgroundColor: Colors.secondary,
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing[3],
-    paddingVertical: Spacing[2],
-  },
-  voiceOrderBtn: {
-    backgroundColor: Colors.primary,
-  },
-  newOrderText: { ...Typography.label, color: Colors.white, fontWeight: '700' },
-  filters: {
-    paddingHorizontal: Spacing[4],
-    marginBottom: Spacing[2],
-    gap: Spacing[2],
-  },
-  search: {
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing[3],
-    paddingVertical: Spacing[3],
-    color: Colors.textPrimary,
-  },
-  filterChips: { gap: Spacing[2], paddingVertical: Spacing[1] },
-  chip: {
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.full,
-    paddingHorizontal: Spacing[3],
-    paddingVertical: Spacing[2],
-  },
-  chipActive: { backgroundColor: Colors.primaryLight, borderColor: Colors.primary },
-  chipText: { ...Typography.caption, color: Colors.textSecondary },
-  chipTextActive: { color: Colors.primary, fontWeight: '700' },
-  list: { padding: Spacing[4], paddingTop: Spacing[2], paddingBottom: Spacing[8] },
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing[4],
-    marginBottom: Spacing[3],
-  },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing[3] },
-  coupon: { ...Typography.h5, color: Colors.textPrimary },
-  erp: { ...Typography.caption, color: Colors.textSecondary, marginTop: 2 },
-  metaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[3] },
-  metaItem: { width: '45%' },
-  metaLabel: { ...Typography.caption, color: Colors.textSecondary },
-  metaValue: { ...Typography.label, color: Colors.textPrimary, marginTop: 2 },
-  rowReverse: { flexDirection: 'row-reverse' },
-  rtlText: { textAlign: 'right', writingDirection: 'rtl' },
-});
+const createOrderStyles = (c: AppColors) =>
+  StyleSheet.create({
+    pageHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: Spacing[4],
+      paddingTop: Spacing[3],
+      paddingBottom: Spacing[2],
+      gap: Spacing[3],
+    },
+    title: { ...Typography.h4, color: c.textPrimary },
+    subtitle: { ...Typography.bodySmall, color: c.textSecondary, marginTop: 2 },
+    newOrderBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: c.accent,
+      borderRadius: BorderRadius.lg,
+      paddingHorizontal: Spacing[3],
+      paddingVertical: Spacing[2],
+    },
+    voiceOrderBtn: {
+      backgroundColor: c.primary,
+    },
+    newOrderText: { ...Typography.label, color: c.white, fontWeight: '700' },
+    filters: {
+      paddingHorizontal: Spacing[4],
+      marginBottom: Spacing[2],
+      gap: Spacing[2],
+    },
+    search: {
+      backgroundColor: c.surface,
+      borderWidth: 1.5,
+      borderColor: c.border,
+      borderRadius: BorderRadius.lg,
+      paddingHorizontal: Spacing[4],
+      paddingVertical: Spacing[3],
+      color: c.textPrimary,
+    },
+    filterChips: { gap: Spacing[2], paddingVertical: Spacing[1] },
+    chip: {
+      backgroundColor: c.surface,
+      borderWidth: 1,
+      borderColor: c.border,
+      borderRadius: BorderRadius.full,
+      paddingHorizontal: Spacing[3],
+      paddingVertical: Spacing[2],
+    },
+    chipActive: { backgroundColor: c.primary, borderColor: c.primary },
+    chipText: { ...Typography.caption, color: c.textSecondary, fontWeight: '600' },
+    chipTextActive: { color: c.white, fontWeight: '700' },
+    list: { padding: Spacing[4], paddingTop: Spacing[2] },
+    card: {
+      backgroundColor: c.surface,
+      borderRadius: BorderRadius.xl,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.border,
+      padding: Spacing[4],
+      marginBottom: Spacing[3],
+    },
+    cardTop: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: Spacing[3],
+    },
+    coupon: { ...Typography.h5, color: c.textPrimary },
+    erp: { ...Typography.caption, color: c.textSecondary, marginTop: 2 },
+    metaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[3] },
+    metaItem: { width: '45%' },
+    metaLabel: { ...Typography.caption, color: c.textSecondary },
+    metaValue: { ...Typography.label, color: c.textPrimary, marginTop: 2 },
+    rowReverse: { flexDirection: 'row-reverse' },
+    rtlText: { textAlign: 'right', writingDirection: 'rtl' },
+  });
 
 export default OrdersScreen;

@@ -14,6 +14,7 @@ export interface User {
   lnCode?: string | null;
   username?: string;
   availableCredit?: number;
+  outstandingBalance?: number;
   creditExpiry?: string | null;
   verificationStatus?: 'Verified' | 'Not Verified';
 }

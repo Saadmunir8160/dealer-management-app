@@ -1,7 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AppStackParamList } from '@types';
-import { Colors } from '@theme';
+import { useTheme } from '@context';
 
 import BottomTabNavigator from './BottomTabNavigator';
 import OrderDetailScreen from '@screens/Orders/OrderDetailScreen';
@@ -14,56 +14,60 @@ import SettingsScreen from '@screens/Settings/SettingsScreen';
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
 
-const AppNavigator = () => (
-  <Stack.Navigator
-    screenOptions={{
-      headerStyle: { backgroundColor: Colors.surface },
-      headerTintColor: Colors.textPrimary,
-      headerTitleStyle: { fontWeight: '600' },
-      headerBackTitleVisible: false,
-    }}
-  >
-    <Stack.Screen
-      name="BottomTabs"
-      component={BottomTabNavigator}
-      options={{ headerShown: false }}
-    />
-    <Stack.Screen
-      name="OrderDetail"
-      component={OrderDetailScreen}
-      options={{ title: 'Order Details' }}
-    />
-    <Stack.Screen
-      name="CreateOrder"
-      component={CreateOrderScreen}
-      options={{ title: 'New Order' }}
-    />
-    <Stack.Screen
-      name="VoiceOrder"
-      component={VoiceOrderScreen}
-      options={{ title: 'New Order' }}
-    />
-    <Stack.Screen
-      name="EditProfile"
-      component={EditProfileScreen}
-      options={{ title: 'Edit Profile' }}
-    />
-    <Stack.Screen
-      name="ChangePassword"
-      component={ChangePasswordScreen}
-      options={{ title: 'Change Password' }}
-    />
-    <Stack.Screen
-      name="Notifications"
-      component={NotificationsScreen}
-      options={{ title: 'Notifications' }}
-    />
-    <Stack.Screen
-      name="Settings"
-      component={SettingsScreen}
-      options={{ title: 'Settings' }}
-    />
-  </Stack.Navigator>
-);
+const AppNavigator = () => {
+  const { colors } = useTheme();
+
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.textPrimary,
+        headerTitleStyle: { fontWeight: '600', color: colors.textPrimary },
+        headerBackTitleVisible: false,
+        contentStyle: { backgroundColor: colors.background },
+        statusBarTranslucent: false,
+      }}
+    >
+      <Stack.Screen
+        name="BottomTabs"
+        component={BottomTabNavigator}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="OrderDetail"
+        component={OrderDetailScreen}
+        options={{ title: 'Order Details' }}
+      />
+      <Stack.Screen
+        name="CreateOrder"
+        component={CreateOrderScreen}
+        options={({ route }) => ({
+          title: route.params?.mode === 'voice' ? 'Voice Order' : 'New Order',
+        })}
+      />
+      <Stack.Screen
+        name="VoiceOrder"
+        component={VoiceOrderScreen}
+        options={{ title: 'New Order' }}
+      />
+      <Stack.Screen
+        name="EditProfile"
+        component={EditProfileScreen}
+        options={{ title: 'Edit Profile' }}
+      />
+      <Stack.Screen
+        name="ChangePassword"
+        component={ChangePasswordScreen}
+        options={{ title: 'Change Password' }}
+      />
+      <Stack.Screen
+        name="Notifications"
+        component={NotificationsScreen}
+        options={{ title: 'Notifications' }}
+      />
+      <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
+    </Stack.Navigator>
+  );
+};
 
 export default AppNavigator;

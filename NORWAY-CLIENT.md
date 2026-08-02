@@ -1,24 +1,23 @@
 # Norway client — share this
 
 ## Install (Android APK)
-Install page (Railway API):  
-https://expo.dev/accounts/khanyahyas-team/projects/yahyakhan/builds/0bf92dc1-767a-4c08-a444-fad5bd43534a
+Install page:  
+https://expo.dev/accounts/khanmoeezs-team/projects/moeez/builds/1606eb16-9650-4a30-bb72-04e5ef241883
 
 Direct APK:  
-https://expo.dev/artifacts/eas/Ofjztc0eHKK8HMRqGa6Di1EkPrxTE2AAhUZdDXnS-6Y.apk
+https://expo.dev/artifacts/eas/KZgp3uGAxAlJU3zLlkFI3G6HXw7bMvqs5WvkhfsNWqA.apk
 
-After install: force-close app **twice** to load latest OTA (UCIC item list from Railway).
+Version: **1.0.14** (project `khanmoeezs-team` / `moeez`)
 
-OTA: https://expo.dev/accounts/khanyahyas-team/projects/yahyakhan/updates/761b6ca5-68eb-4430-b4e1-cf34b6be040c
-
-Version: **1.0.13**
-
-API (Railway — always on):  
+API (Railway — laptop + phone same DB):  
 `https://dealer-management-app-production.up.railway.app`
 
+> Orders count shared: agar laptop pe 36 hain to phone pe bhi 36; naya order dono pe 37.
+
 ## Login
-- Username: `admin` (or `admin@dealerapp.com`)
+- Email: `admin@dealerapp.com`
 - Password: `Admin@123`
+- (Username `admin` bhi chalega — same account)
 
 ## Notes for client
 1. Allow install from unknown sources if Android asks.
@@ -29,10 +28,10 @@ API (Railway — always on):
 ## What they will see
 - **Please Select Item Code:** UCIC LN list (5601 OPC Bags, 5505 MCT Bulk, 5719, …)
 - **New Order:** Coupon, bags 500/600, Place Order
-- **Profile:** UCIC Customer Information (LN 1087 Mashid)
+- **Profile:** UCIC Customer Information
 - **Orders list:** Coupon, ERP, Status, Area, Driver, Vehicle
 
 ## Backend status
 - Railway API + Postgres: Online
-- UCIC products seeded (no PRD-* demo codes)
-- Login verified
+- UCIC products seeded
+- Login verified (`admin@dealerapp.com` / `Admin@123`)

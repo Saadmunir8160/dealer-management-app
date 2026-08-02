@@ -28,6 +28,13 @@ const resolveApiBaseUrl = (): string => {
     return toApiBaseUrl(PUBLIC_API_URL);
   }
 
+  // Production / preview APK must never silently hit a laptop localhost.
+  if (ENV === 'production' || ENV === 'staging') {
+    throw new Error(
+      'EXPO_PUBLIC_API_URL is required for production builds (use Railway URL).',
+    );
+  }
+
   // Fallback when EXPO_PUBLIC_API_URL is unset — DealerManagement.Api (port 5246).
   // Prefer 127.0.0.1 on web — Chrome often resolves "localhost" to IPv6 (::1).
   const host =

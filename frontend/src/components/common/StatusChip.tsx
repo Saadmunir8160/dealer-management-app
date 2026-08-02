@@ -1,10 +1,8 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// src/components/common/StatusChip.tsx
-// Colored status chip for order statuses, dealer statuses, etc.
-// ─────────────────────────────────────────────────────────────────────────────
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { Colors, Typography, Spacing, BorderRadius } from '@theme';
+import { Typography, Spacing, BorderRadius } from '@theme';
+import { useTheme } from '@context';
+import type { AppColors } from '@theme/colors';
 
 type StatusType = 'success' | 'warning' | 'error' | 'info' | 'neutral' | 'primary';
 
@@ -14,20 +12,28 @@ interface StatusChipProps {
   style?: ViewStyle;
 }
 
-const typeMap: Record<StatusType, { bg: string; text: string }> = {
-  success: { bg: Colors.successLight, text: Colors.success },
-  warning: { bg: Colors.warningLight, text: Colors.warning },
-  error: { bg: Colors.errorLight, text: Colors.error },
-  info: { bg: Colors.infoLight, text: Colors.info },
-  neutral: { bg: Colors.gray200, text: Colors.gray700 },
-  primary: { bg: Colors.primaryLight, text: Colors.primary },
-};
+function typeMap(colors: AppColors): Record<StatusType, { bg: string; text: string }> {
+  return {
+    success: { bg: colors.successLight, text: colors.success },
+    warning: { bg: colors.warningLight, text: colors.warning },
+    error: { bg: colors.errorLight, text: colors.error },
+    info: { bg: colors.infoLight, text: colors.info },
+    neutral: { bg: colors.gray200, text: colors.textSecondary },
+    primary: { bg: colors.primaryLight, text: colors.primary },
+  };
+}
 
-const StatusChip: React.FC<StatusChipProps> = ({ label, type = 'neutral', style }) => (
-  <View style={[styles.chip, { backgroundColor: typeMap[type].bg }, style]}>
-    <Text style={[styles.label, { color: typeMap[type].text }]}>{label}</Text>
-  </View>
-);
+const StatusChip: React.FC<StatusChipProps> = ({ label, type = 'neutral', style }) => {
+  const { colors } = useTheme();
+  const map = useMemo(() => typeMap(colors), [colors]);
+  const tone = map[type];
+
+  return (
+    <View style={[styles.chip, { backgroundColor: tone.bg }, style]}>
+      <Text style={[styles.label, { color: tone.text }]}>{label}</Text>
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   chip: {

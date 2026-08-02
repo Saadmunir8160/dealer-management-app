@@ -115,7 +115,7 @@ const EditDealerScreen: React.FC<Props> = ({ route, navigation }) => {
   if (isLoading) return <AppLoader message="Loading dealer..." />;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

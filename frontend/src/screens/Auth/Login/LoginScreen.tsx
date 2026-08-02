@@ -7,17 +7,19 @@ import {
   KeyboardAvoidingView,
   Platform,
   ImageBackground,
-  Dimensions,
+  useWindowDimensions,
   TouchableOpacity,
+  Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '@types';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { useAuth } from '@hooks';
-import { useToast } from '@context';
-import { Colors, Spacing, BorderRadius } from '@theme';
+import { useToast, useLanguage } from '@context';
+import { Colors, Spacing, BorderRadius, Shadows } from '@theme';
 import AppInput from '@components/inputs/AppInput';
 import AppButton from '@components/buttons/AppButton';
 import { loginThunk } from '@store/slices/authSlice';
@@ -25,10 +27,7 @@ import { loginThunk } from '@store/slices/authSlice';
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 const LOGIN_BG = require('../../../../assets/loginPageBackground.jpg');
-
-/** UCIC portal brand blue (matches screenshot) */
-const BRAND_BLUE = '#1B3A6B';
-const LOGIN_ORANGE = '#F39223';
+const LOGO = require('../../../../assets/ucic-logo.png');
 
 const loginSchema = yup.object({
   email: yup.string().required('Email or username is required').min(3, 'Enter email or username'),
@@ -40,6 +39,9 @@ type LoginForm = yup.InferType<typeof loginSchema>;
 const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const { login, isLoading, refreshProfile } = useAuth();
   const { showError } = useToast();
+  const { t, isRTL } = useLanguage();
+  const { width } = useWindowDimensions();
+  const cardMaxWidth = Math.min(420, width - 40);
 
   const {
     control,
@@ -58,7 +60,6 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         showError('Login Failed', payload?.message ?? 'Invalid credentials');
         return;
       }
-      // Load UCIC customer fields (LN / credit) after session is saved.
       try {
         await refreshProfile();
       } catch {
@@ -72,88 +73,95 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <ImageBackground source={LOGIN_BG} style={styles.background} resizeMode="cover">
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+      <View style={styles.dim} />
+      <SafeAreaView style={styles.flex} edges={['top', 'bottom', 'left', 'right']}>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
         >
-          <View style={styles.card}>
-            <View style={styles.brandBlock}>
-              <Text style={styles.brandAr}>شركة اسمنت المتحدة الصناعية</Text>
-              <Text style={styles.brandEn}>UNITED CEMENT INDUSTRIAL COMPANY</Text>
-              <Text style={styles.signInHint}>Sign in to continue to your account</Text>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            <View style={[styles.card, { width: cardMaxWidth }, Shadows.lg as object]}>
+              <View style={styles.brandBlock}>
+                <Image source={LOGO} style={styles.logo} resizeMode="contain" />
+                <Text style={[styles.brandAr, isRTL && styles.rtl]}>شركة الأسمنت المتحدة الصناعية</Text>
+                <Text style={styles.brandEn}>UNITED CEMENT INDUSTRIAL COMPANY</Text>
+                <Text style={styles.signInHint}>{t('signInContinue')}</Text>
+              </View>
+
+              <Controller
+                control={control}
+                name="email"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <AppInput
+                    label={t('emailAddress')}
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    keyboardType="default"
+                    placeholder=""
+                    error={errors.email?.message}
+                    autoComplete="email"
+                    textContentType="emailAddress"
+                    filled
+                    containerStyle={styles.inputGap}
+                  />
+                )}
+              />
+
+              <Controller
+                control={control}
+                name="password"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <AppInput
+                    label={t('password')}
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    placeholder=""
+                    isPassword
+                    error={errors.password?.message}
+                    autoComplete="password"
+                    textContentType="password"
+                    filled
+                    containerStyle={styles.inputGap}
+                  />
+                )}
+              />
+
+              <View style={[styles.forgotRow, isRTL && styles.rowReverse]}>
+                <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+                  <Text style={styles.forgotText}>{t('forgotPassword')}</Text>
+                </TouchableOpacity>
+              </View>
+
+              <AppButton
+                title={t('login')}
+                onPress={handleSubmit(onSubmit)}
+                isLoading={isLoading}
+                fullWidth
+                size="lg"
+                style={styles.loginBtn}
+              />
             </View>
-
-            <Controller
-              control={control}
-              name="email"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <AppInput
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  keyboardType="default"
-                  placeholder="Email or username"
-                  error={errors.email?.message}
-                  autoComplete="email"
-                  textContentType="emailAddress"
-                  filled
-                  containerStyle={styles.inputGap}
-                />
-              )}
-            />
-
-            <Controller
-              control={control}
-              name="password"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <AppInput
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  placeholder="Password"
-                  isPassword
-                  error={errors.password?.message}
-                  autoComplete="password"
-                  textContentType="password"
-                  filled
-                  containerStyle={styles.inputGap}
-                />
-              )}
-            />
-
-            <TouchableOpacity
-              onPress={() => navigation.navigate('ForgotPassword')}
-              style={styles.forgotWrap}
-            >
-              <Text style={styles.forgotText}>Forgot Password?</Text>
-            </TouchableOpacity>
-
-            <AppButton
-              title="Login"
-              onPress={handleSubmit(onSubmit)}
-              isLoading={isLoading}
-              fullWidth
-              size="lg"
-              style={styles.loginBtn}
-              textStyle={styles.loginBtnText}
-            />
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </ImageBackground>
   );
 };
 
-const { width } = Dimensions.get('window');
-const cardMaxWidth = Math.min(400, width - 40);
-
 const styles = StyleSheet.create({
   background: { flex: 1, width: '100%', height: '100%' },
+  dim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
+  },
   flex: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
@@ -163,66 +171,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing[4],
   },
   card: {
-    width: cardMaxWidth,
     maxWidth: '100%',
     backgroundColor: Colors.white,
-    borderRadius: 16,
-    paddingHorizontal: Spacing[6],
-    paddingTop: Spacing[7],
+    borderRadius: BorderRadius.xl,
+    paddingHorizontal: Spacing[5],
+    paddingTop: Spacing[6],
     paddingBottom: Spacing[6],
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 28,
-    elevation: 12,
   },
-  brandBlock: {
-    alignItems: 'center',
-    marginBottom: Spacing[5],
-  },
+  brandBlock: { alignItems: 'center', marginBottom: Spacing[5] },
+  logo: { width: 72, height: 72, marginBottom: Spacing[3] },
   brandAr: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
-    color: BRAND_BLUE,
+    color: Colors.primaryDark,
     textAlign: 'center',
     marginBottom: 6,
-    writingDirection: 'rtl',
   },
   brandEn: {
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-    color: BRAND_BLUE,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    color: Colors.primaryDark,
     textAlign: 'center',
-    marginBottom: Spacing[3],
+    marginBottom: Spacing[2],
   },
   signInHint: {
     fontSize: 13,
-    color: '#8A94A6',
+    color: Colors.textSecondary,
     textAlign: 'center',
   },
   inputGap: { marginBottom: Spacing[3] },
-  forgotWrap: {
-    alignSelf: 'flex-end',
-    marginBottom: Spacing[3],
-    marginTop: -Spacing[1],
+  forgotRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: Spacing[4],
   },
-  forgotText: {
-    fontSize: 13,
-    color: BRAND_BLUE,
-    fontWeight: '600',
-  },
-  loginBtn: {
-    backgroundColor: LOGIN_ORANGE,
-    borderRadius: BorderRadius.lg,
-    marginTop: Spacing[2],
-    minHeight: 48,
-  },
-  loginBtnText: {
-    fontWeight: '700',
-    fontSize: 16,
-    color: Colors.white,
-  },
+  rowReverse: { flexDirection: 'row-reverse' },
+  rtl: { writingDirection: 'rtl' },
+  forgotText: { fontSize: 13, color: Colors.primary, fontWeight: '700' },
+  loginBtn: { borderRadius: BorderRadius.lg },
 });
 
 export default LoginScreen;

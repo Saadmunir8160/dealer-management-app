@@ -80,7 +80,7 @@ const DealerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   if (isLoading) return <AppLoader message="Loading dealer..." />;
   if (!dealer) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Dealer not found.</Text>
         </View>
@@ -89,7 +89,7 @@ const DealerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* ── Header Card ────────────────────────────────────────────── */}
         <AppCard style={styles.headerCard}>

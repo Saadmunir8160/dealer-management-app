@@ -1,19 +1,36 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// src/theme/typography.ts
-// Typography scale for consistent text styling across the app.
-// ─────────────────────────────────────────────────────────────────────────────
 import { Platform } from 'react-native';
 
+/** Prefer system / Inter-like stacks for polished enterprise readability */
 export const FontFamily = {
-  regular: Platform.select({ ios: 'Inter-Regular', android: 'Inter-Regular' }),
-  medium: Platform.select({ ios: 'Inter-Medium', android: 'Inter-Medium' }),
-  semiBold: Platform.select({ ios: 'Inter-SemiBold', android: 'Inter-SemiBold' }),
-  bold: Platform.select({ ios: 'Inter-Bold', android: 'Inter-Bold' }),
-  light: Platform.select({ ios: 'Inter-Light', android: 'Inter-Light' }),
+  regular: Platform.select({
+    ios: 'System',
+    android: 'sans-serif',
+    default: 'System',
+  }),
+  medium: Platform.select({
+    ios: 'System',
+    android: 'sans-serif-medium',
+    default: 'System',
+  }),
+  semiBold: Platform.select({
+    ios: 'System',
+    android: 'sans-serif-medium',
+    default: 'System',
+  }),
+  bold: Platform.select({
+    ios: 'System',
+    android: 'sans-serif-medium',
+    default: 'System',
+  }),
+  light: Platform.select({
+    ios: 'System',
+    android: 'sans-serif-light',
+    default: 'System',
+  }),
 } as const;
 
 export const FontSize = {
-  xs: 10,
+  xs: 11,
   sm: 12,
   base: 14,
   md: 16,
@@ -32,15 +49,15 @@ export const LineHeight = {
 } as const;
 
 export const Typography = {
-  h1: { fontSize: FontSize['4xl'], fontFamily: FontFamily.bold, lineHeight: 40 },
-  h2: { fontSize: FontSize['3xl'], fontFamily: FontFamily.bold, lineHeight: 34 },
-  h3: { fontSize: FontSize['2xl'], fontFamily: FontFamily.semiBold, lineHeight: 30 },
-  h4: { fontSize: FontSize.xl, fontFamily: FontFamily.semiBold, lineHeight: 26 },
-  h5: { fontSize: FontSize.lg, fontFamily: FontFamily.semiBold, lineHeight: 24 },
-  bodyLarge: { fontSize: FontSize.md, fontFamily: FontFamily.regular, lineHeight: 24 },
-  body: { fontSize: FontSize.base, fontFamily: FontFamily.regular, lineHeight: 22 },
-  bodySmall: { fontSize: FontSize.sm, fontFamily: FontFamily.regular, lineHeight: 18 },
-  caption: { fontSize: FontSize.xs, fontFamily: FontFamily.regular, lineHeight: 14 },
-  label: { fontSize: FontSize.sm, fontFamily: FontFamily.medium, lineHeight: 18 },
-  button: { fontSize: FontSize.base, fontFamily: FontFamily.semiBold, lineHeight: 20 },
+  h1: { fontSize: FontSize['4xl'], fontWeight: '700' as const, lineHeight: 40, letterSpacing: -0.5 },
+  h2: { fontSize: FontSize['3xl'], fontWeight: '700' as const, lineHeight: 34, letterSpacing: -0.3 },
+  h3: { fontSize: FontSize['2xl'], fontWeight: '700' as const, lineHeight: 30 },
+  h4: { fontSize: FontSize.xl, fontWeight: '600' as const, lineHeight: 26 },
+  h5: { fontSize: FontSize.lg, fontWeight: '600' as const, lineHeight: 24 },
+  bodyLarge: { fontSize: FontSize.md, fontWeight: '400' as const, lineHeight: 24 },
+  body: { fontSize: FontSize.base, fontWeight: '400' as const, lineHeight: 22 },
+  bodySmall: { fontSize: FontSize.sm, fontWeight: '400' as const, lineHeight: 18 },
+  caption: { fontSize: FontSize.xs, fontWeight: '400' as const, lineHeight: 15 },
+  label: { fontSize: FontSize.sm, fontWeight: '600' as const, lineHeight: 18 },
+  button: { fontSize: FontSize.base, fontWeight: '700' as const, lineHeight: 20, letterSpacing: 0.2 },
 } as const;

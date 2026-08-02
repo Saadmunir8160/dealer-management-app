@@ -4,3 +4,4 @@
 // ─────────────────────────────────────────────────────────────────────────────
 export * from './ToastContext';
 export * from './LanguageContext';
+export * from './ThemeContext';

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '@types';
 import { authApi } from '@api/authApi';
@@ -44,6 +45,7 @@ const OTPScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   return (
+    <SafeAreaView style={styles.flex} edges={['top', 'bottom', 'left', 'right']}>
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Verify OTP</Text>
@@ -79,6 +81,7 @@ const OTPScreen: React.FC<Props> = ({ navigation, route }) => {
         <AppButton title="Back" onPress={() => navigation.goBack()} variant="ghost" fullWidth style={styles.backBtn} />
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 

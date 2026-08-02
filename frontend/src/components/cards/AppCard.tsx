@@ -1,10 +1,7 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// src/components/cards/AppCard.tsx
-// Generic surface card with optional press handler and shadow.
-// ─────────────────────────────────────────────────────────────────────────────
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useMemo } from 'react';
 import { TouchableOpacity, View, StyleSheet, ViewStyle } from 'react-native';
-import { Colors, Spacing, BorderRadius, Shadows } from '@theme';
+import { Spacing, BorderRadius, Shadows } from '@theme';
+import { useTheme } from '@context';
 
 interface AppCardProps {
   children: ReactNode;
@@ -13,15 +10,26 @@ interface AppCardProps {
   shadow?: 'sm' | 'md' | 'lg';
 }
 
-const AppCard: React.FC<AppCardProps> = ({ children, onPress, style, shadow = 'sm' }) => {
+const AppCard: React.FC<AppCardProps> = ({ children, onPress, style, shadow = 'md' }) => {
+  const { colors, isDark } = useTheme();
   const Container = onPress ? TouchableOpacity : View;
 
+  const cardStyle = useMemo(
+    () => [
+      styles.card,
+      {
+        backgroundColor: colors.surface,
+        borderColor: colors.border,
+        ...(isDark ? { shadowOpacity: 0, elevation: 0 } : null),
+      },
+      !isDark ? (Shadows[shadow] as ViewStyle) : null,
+      style,
+    ],
+    [colors.surface, colors.border, isDark, shadow, style],
+  );
+
   return (
-    <Container
-      onPress={onPress}
-      activeOpacity={0.85}
-      style={[styles.card, Shadows[shadow] as ViewStyle, style]}
-    >
+    <Container onPress={onPress} activeOpacity={0.88} style={cardStyle}>
       {children}
     </Container>
   );
@@ -29,11 +37,9 @@ const AppCard: React.FC<AppCardProps> = ({ children, onPress, style, shadow = 's
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.xl,
     padding: Spacing[4],
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderWidth: StyleSheet.hairlineWidth,
   },
 });
 

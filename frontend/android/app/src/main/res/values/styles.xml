@@ -4,6 +4,11 @@
     <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
     <item name="colorPrimary">@color/colorPrimary</item>
     <item name="android:statusBarColor">#1E40AF</item>
+    <item name="android:navigationBarColor">#FFFFFF</item>
+    <item name="android:windowLightNavigationBar" tools:targetApi="27">true</item>
+    <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
+    <!-- Keep soft keyboard from covering inputs; works with Safe Area padding. -->
+    <item name="android:windowSoftInputMode">adjustResize</item>
   </style>
   <style name="Theme.App.SplashScreen" parent="AppTheme">
     <item name="android:windowBackground">@drawable/ic_launcher_background</item>

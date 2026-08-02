@@ -6,9 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  ViewStyle,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -19,15 +18,18 @@ import {
   SupportTicket,
 } from '@types';
 import { SupportService } from '@services/supportService';
-import { useToast, useLanguage } from '@context';
+import { useToast, useLanguage, useTheme } from '@context';
 import { formatDate } from '@utils';
-import { Colors, Typography, Spacing, BorderRadius } from '@theme';
-import { PortalHeader, EmptyState, StatusChip } from '@components/common';
+import { Typography, Spacing, BorderRadius, Shadows, useThemedStyles } from '@theme';
+import type { AppColors } from '@theme/colors';
+import { useLayoutMetrics } from '@theme/layout';
+import { EmptyState, StatusChip, PortalHeader } from '@components/common';
+import Screen from '@components/layout/Screen';
 import AppCard from '@components/cards/AppCard';
-import AppButton from '@components/buttons/AppButton';
 import AppLoader from '@components/loaders/AppLoader';
 
 type TabKey = 'contact' | 'tickets';
+type IonName = React.ComponentProps<typeof Ionicons>['name'];
 
 const schema = yup.object({
   subject: yup.string().required('Subject is required'),
@@ -42,15 +44,25 @@ const CATEGORIES = ['Orders', 'Delivery', 'Billing', 'Account', 'Other'];
 const PRIORITIES: SupportPriority[] = ['Low', 'Medium', 'High'];
 
 const SupportScreen = () => {
-  const { showSuccess, showError } = useToast();
+  const { showSuccess, showError, showInfo } = useToast();
   const { t, isRTL } = useLanguage();
+  const { colors } = useTheme();
+  const { scrollBottomPad } = useLayoutMetrics();
+  const styles = useThemedStyles(createSupportStyles);
   const [tab, setTab] = useState<TabKey>('contact');
   const [contact, setContact] = useState<SupportContactInfo | null>(null);
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const { control, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm<FormValues>({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    reset,
+    setValue,
+    watch,
+  } = useForm<FormValues>({
     resolver: yupResolver(schema),
     defaultValues: { priority: 'Medium', category: 'Orders' },
   });
@@ -97,22 +109,46 @@ const SupportScreen = () => {
 
   if (loading) return <AppLoader message={t('loadingSupport')} />;
 
+  const phone = contact?.phone ?? '+966 9200 26267';
+  const email = contact?.email ?? 'info@unitedcement.com.sa';
+  const whatsapp = contact?.whatsapp ?? phone;
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <Screen edges={['top']}>
       <PortalHeader />
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.container, { paddingBottom: scrollBottomPad + 88 }]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text style={[styles.title, isRTL && styles.rtlText]}>{t('supportCenter')}</Text>
         <Text style={[styles.subtitle, isRTL && styles.rtlText]}>{t('supportSubtitle')}</Text>
 
         <View style={[styles.tabs, isRTL && styles.rowReverse]}>
-          <TabBtn label={t('contactSupport')} active={tab === 'contact'} onPress={() => setTab('contact')} />
-          <TabBtn label={t('myTickets')} active={tab === 'tickets'} onPress={() => setTab('tickets')} />
+          <TabBtn
+            label={t('contactSupport')}
+            active={tab === 'contact'}
+            onPress={() => setTab('contact')}
+          />
+          <TabBtn
+            label={t('myTickets')}
+            active={tab === 'tickets'}
+            onPress={() => setTab('tickets')}
+            icon="folder-outline"
+          />
         </View>
 
         {tab === 'contact' ? (
           <>
-            <AppCard style={styles.formCard}>
-              <Text style={[styles.formTitle, isRTL && styles.rtlText]}>{t('createSupportTicket')}</Text>
+            <AppCard style={styles.formCard} shadow="md">
+              <View style={[styles.cardHead, isRTL && styles.rowReverse]}>
+                <View style={styles.cardHeadIcon}>
+                  <Ionicons name="chatbubbles" size={18} color={colors.primary} />
+                </View>
+                <Text style={[styles.formTitle, isRTL && styles.rtlText]}>
+                  {t('createSupportTicket')}
+                </Text>
+              </View>
 
               <Text style={[styles.label, isRTL && styles.rtlText]}>{t('subject')}</Text>
               <Controller
@@ -121,8 +157,8 @@ const SupportScreen = () => {
                 render={({ field: { onChange, value } }) => (
                   <TextInput
                     style={[styles.input, isRTL && styles.rtlText]}
-                    placeholder={t('enterSubject')}
-                    placeholderTextColor={Colors.textDisabled}
+                    placeholder="Brief description of your issue."
+                    placeholderTextColor={colors.textDisabled}
                     value={value}
                     onChangeText={onChange}
                   />
@@ -138,7 +174,11 @@ const SupportScreen = () => {
                     style={[styles.chip, watch('category') === cat && styles.chipActive]}
                     onPress={() => setValue('category', cat)}
                   >
-                    <Text style={[styles.chipText, watch('category') === cat && styles.chipTextActive]}>{cat}</Text>
+                    <Text
+                      style={[styles.chipText, watch('category') === cat && styles.chipTextActive]}
+                    >
+                      {cat}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -151,7 +191,11 @@ const SupportScreen = () => {
                     style={[styles.chip, watch('priority') === p && styles.chipActive]}
                     onPress={() => setValue('priority', p)}
                   >
-                    <Text style={[styles.chipText, watch('priority') === p && styles.chipTextActive]}>{p}</Text>
+                    <Text
+                      style={[styles.chipText, watch('priority') === p && styles.chipTextActive]}
+                    >
+                      {p}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -163,8 +207,8 @@ const SupportScreen = () => {
                 render={({ field: { onChange, value } }) => (
                   <TextInput
                     style={[styles.input, styles.textarea, isRTL && styles.rtlText]}
-                    placeholder={t('describeIssue')}
-                    placeholderTextColor={Colors.textDisabled}
+                    placeholder="Please provide detailed information about your issue..."
+                    placeholderTextColor={colors.textDisabled}
                     multiline
                     textAlignVertical="top"
                     value={value}
@@ -172,16 +216,65 @@ const SupportScreen = () => {
                   />
                 )}
               />
-              {!!errors.description && <Text style={styles.error}>{errors.description.message}</Text>}
+              {!!errors.description && (
+                <Text style={styles.error}>{errors.description.message}</Text>
+              )}
 
-              <AppButton title={t('submitTicket')} onPress={handleSubmit(onSubmit)} isLoading={submitting} />
+              <TouchableOpacity
+                style={[styles.attachBox, isRTL && styles.rowReverse]}
+                onPress={() => showInfo(t('comingSoon'), 'File upload will be available soon.')}
+                activeOpacity={0.75}
+              >
+                <Ionicons name="attach" size={20} color={colors.primary} />
+                <Text style={styles.attachText}>Upload files (Max 5MB each)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.submitBtn, isRTL && styles.rowReverse]}
+                onPress={handleSubmit(onSubmit)}
+                disabled={submitting}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="send" size={18} color={colors.white} />
+                <Text style={styles.submitText}>
+                  {submitting ? '…' : t('submitTicket')}
+                </Text>
+              </TouchableOpacity>
             </AppCard>
 
-            <View style={styles.contactList}>
-              <ContactCard title={t('phoneSupport')} value={contact?.phone ?? '—'} icon="📞" color={Colors.success} isRTL={isRTL} />
-              <ContactCard title={t('emailSupport')} value={contact?.email ?? '—'} icon="✉" color={Colors.primary} hint={t('response24h')} isRTL={isRTL} />
-              <ContactCard title={t('whatsapp')} value={contact?.whatsapp ?? '—'} icon="💬" color={Colors.success} isRTL={isRTL} />
-            </View>
+            <AppCard style={styles.contactPanel} shadow="md">
+              <View style={[styles.cardHead, isRTL && styles.rowReverse]}>
+                <View style={styles.cardHeadIcon}>
+                  <Ionicons name="person" size={18} color={colors.primary} />
+                </View>
+                <Text style={[styles.formTitle, isRTL && styles.rtlText]}>
+                  Contact Information
+                </Text>
+              </View>
+
+              <ContactRow
+                title={t('phoneSupport')}
+                value={phone}
+                icon="call"
+                color={colors.success}
+                isRTL={isRTL}
+              />
+              <ContactRow
+                title="Customer service email"
+                value={email}
+                icon="mail"
+                color={colors.primary}
+                hint={t('response24h')}
+                isRTL={isRTL}
+              />
+              <ContactRow
+                title={t('whatsapp')}
+                value={whatsapp}
+                icon="logo-whatsapp"
+                color={colors.success}
+                isRTL={isRTL}
+              />
+            </AppCard>
           </>
         ) : (
           <View style={{ gap: Spacing[3] }}>
@@ -189,35 +282,63 @@ const SupportScreen = () => {
               <EmptyState title={t('noTickets')} message={t('noTicketsMsg')} />
             ) : (
               tickets.map(ticket => (
-                <AppCard key={ticket.ticketId}>
+                <AppCard key={ticket.ticketId} shadow="sm">
                   <View style={[styles.ticketTop, isRTL && styles.rowReverse]}>
-                    <Text style={[styles.ticketSubject, isRTL && styles.rtlText]}>{ticket.subject}</Text>
+                    <Text style={[styles.ticketSubject, isRTL && styles.rtlText]}>
+                      {ticket.subject}
+                    </Text>
                     <StatusChip
                       label={ticket.status}
-                      type={ticket.status === 'Resolved' || ticket.status === 'Closed' ? 'success' : 'warning'}
+                      type={
+                        ticket.status === 'Resolved' || ticket.status === 'Closed'
+                          ? 'success'
+                          : 'warning'
+                      }
                     />
                   </View>
                   <Text style={[styles.ticketMeta, isRTL && styles.rtlText]}>
                     {ticket.category} · {ticket.priority} · {formatDate(ticket.createdAt)}
                   </Text>
-                  <Text style={[styles.ticketDesc, isRTL && styles.rtlText]}>{ticket.description}</Text>
+                  <Text style={[styles.ticketDesc, isRTL && styles.rtlText]}>
+                    {ticket.description}
+                  </Text>
                 </AppCard>
               ))
             )}
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 };
 
-const TabBtn = ({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) => (
-  <TouchableOpacity onPress={onPress} style={[styles.tab, active && styles.tabActive]}>
-    <Text style={[styles.tabText, active && styles.tabTextActive]}>{label}</Text>
-  </TouchableOpacity>
-);
+const TabBtn = ({
+  label,
+  active,
+  onPress,
+  icon,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+  icon?: IonName;
+}) => {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createSupportStyles);
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={[styles.tab, active && styles.tabActive, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
+    >
+      {icon ? (
+        <Ionicons name={icon} size={16} color={active ? colors.primary : colors.textSecondary} />
+      ) : null}
+      <Text style={[styles.tabText, active && styles.tabTextActive]}>{label}</Text>
+    </TouchableOpacity>
+  );
+};
 
-const ContactCard = ({
+const ContactRow = ({
   title,
   value,
   icon,
@@ -227,75 +348,149 @@ const ContactCard = ({
 }: {
   title: string;
   value: string;
-  icon: string;
+  icon: IonName;
   color: string;
   hint?: string;
   isRTL?: boolean;
-}) => (
-  <AppCard style={StyleSheet.flatten([styles.contactCard, isRTL && styles.rowReverse]) as ViewStyle}>
-    <View style={[styles.contactIcon, { backgroundColor: color + '18' }]}>
-      <Text>{icon}</Text>
+}) => {
+  const styles = useThemedStyles(createSupportStyles);
+  return (
+    <View style={[styles.contactRow, isRTL && styles.rowReverse]}>
+      <View style={[styles.contactIcon, { backgroundColor: color + '18' }]}>
+        <Ionicons name={icon} size={22} color={color} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.contactTitle, isRTL && styles.rtlText]}>{title}</Text>
+        <Text style={[styles.contactValue, isRTL && styles.rtlText]}>{value}</Text>
+        {!!hint && <Text style={[styles.contactHint, isRTL && styles.rtlText]}>{hint}</Text>}
+      </View>
     </View>
-    <View style={{ flex: 1 }}>
-      <Text style={[styles.contactTitle, isRTL && styles.rtlText]}>{title}</Text>
-      <Text style={[styles.contactValue, isRTL && styles.rtlText]}>{value}</Text>
-      {!!hint && <Text style={[styles.contactHint, isRTL && styles.rtlText]}>{hint}</Text>}
-    </View>
-  </AppCard>
-);
+  );
+};
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
-  container: { padding: Spacing[4], paddingBottom: Spacing[8] },
-  title: { ...Typography.h4, color: Colors.textPrimary },
-  subtitle: { ...Typography.bodySmall, color: Colors.textSecondary, marginTop: 4, marginBottom: Spacing[4] },
-  tabs: { flexDirection: 'row', marginBottom: Spacing[4], borderBottomWidth: 1, borderBottomColor: Colors.border },
-  tab: { paddingVertical: Spacing[3], marginRight: Spacing[4] },
-  tabActive: { borderBottomWidth: 2, borderBottomColor: Colors.primary },
-  tabText: { ...Typography.label, color: Colors.textSecondary },
-  tabTextActive: { color: Colors.primary, fontWeight: '700' },
+const createSupportStyles = (c: AppColors) => StyleSheet.create({
+  container: { padding: Spacing[4] },
+  title: { ...Typography.h3, color: c.textPrimary },
+  subtitle: {
+    ...Typography.bodySmall,
+    color: c.textSecondary,
+    marginTop: 4,
+    marginBottom: Spacing[4],
+  },
+  tabs: {
+    flexDirection: 'row',
+    marginBottom: Spacing[4],
+    borderBottomWidth: 1,
+    borderBottomColor: c.border,
+  },
+  tab: { paddingVertical: Spacing[3], marginRight: Spacing[5] },
+  tabActive: { borderBottomWidth: 2, borderBottomColor: c.primary },
+  tabText: { ...Typography.label, color: c.textSecondary },
+  tabTextActive: { color: c.primary, fontWeight: '700' },
   formCard: { marginBottom: Spacing[4] },
-  formTitle: { ...Typography.h5, color: Colors.textPrimary, marginBottom: Spacing[3] },
-  label: { ...Typography.label, color: Colors.textSecondary, marginBottom: Spacing[1], marginTop: Spacing[2] },
-  input: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.surface,
-    paddingHorizontal: Spacing[3],
-    paddingVertical: Spacing[3],
-    color: Colors.textPrimary,
+  contactPanel: { marginBottom: Spacing[2], gap: Spacing[3] },
+  cardHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing[2],
+    marginBottom: Spacing[4],
   },
-  textarea: { minHeight: 110 },
-  error: { ...Typography.caption, color: Colors.error, marginTop: 4 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[2], marginBottom: Spacing[1] },
-  chip: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.full,
-    paddingHorizontal: Spacing[3],
-    paddingVertical: Spacing[2],
-    backgroundColor: Colors.surface,
-  },
-  chipActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight },
-  chipText: { ...Typography.caption, color: Colors.textSecondary },
-  chipTextActive: { color: Colors.primary, fontWeight: '700' },
-  contactList: { gap: Spacing[3] },
-  contactCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3] },
-  contactIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: BorderRadius.md,
+  cardHeadIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  contactTitle: { ...Typography.label, color: Colors.textPrimary },
-  contactValue: { ...Typography.body, color: Colors.textSecondary, marginTop: 2 },
-  contactHint: { ...Typography.caption, color: Colors.success, marginTop: 2 },
-  ticketTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing[2] },
-  ticketSubject: { ...Typography.h5, color: Colors.textPrimary, flex: 1 },
-  ticketMeta: { ...Typography.caption, color: Colors.textSecondary, marginTop: Spacing[2] },
-  ticketDesc: { ...Typography.body, color: Colors.textPrimary, marginTop: Spacing[2] },
+  formTitle: { ...Typography.h5, color: c.textPrimary, flex: 1 },
+  label: {
+    ...Typography.label,
+    color: c.textSecondary,
+    marginBottom: Spacing[1],
+    marginTop: Spacing[2],
+  },
+  input: {
+    borderWidth: 1.5,
+    borderColor: c.border,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: c.gray100,
+    paddingHorizontal: Spacing[3],
+    paddingVertical: Spacing[3],
+    color: c.textPrimary,
+    ...Typography.body,
+  },
+  textarea: { minHeight: 120 },
+  error: { ...Typography.caption, color: c.error, marginTop: 4 },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing[2],
+    marginBottom: Spacing[1],
+  },
+  chip: {
+    borderWidth: 1,
+    borderColor: c.border,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing[3],
+    paddingVertical: Spacing[2],
+    backgroundColor: c.surface,
+  },
+  chipActive: { borderColor: c.primary, backgroundColor: c.primaryLight },
+  chipText: { ...Typography.caption, color: c.textSecondary, fontWeight: '600' },
+  chipTextActive: { color: c.primary, fontWeight: '700' },
+  attachBox: {
+    marginTop: Spacing[4],
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: c.border,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing[4],
+    paddingHorizontal: Spacing[3],
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing[2],
+    backgroundColor: c.gray100,
+  },
+  attachText: { ...Typography.bodySmall, color: c.textSecondary, fontWeight: '600' },
+  submitBtn: {
+    marginTop: Spacing[4],
+    backgroundColor: c.primary,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing[4],
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing[2],
+    ...(Shadows.md as object),
+  },
+  submitText: { ...Typography.button, color: c.white },
+  contactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing[3],
+    paddingVertical: Spacing[2],
+  },
+  contactIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contactTitle: { ...Typography.label, color: c.textPrimary },
+  contactValue: { ...Typography.body, color: c.textSecondary, marginTop: 2 },
+  contactHint: { ...Typography.caption, color: c.success, marginTop: 2 },
+  ticketTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: Spacing[2],
+  },
+  ticketSubject: { ...Typography.h5, color: c.textPrimary, flex: 1 },
+  ticketMeta: { ...Typography.caption, color: c.textSecondary, marginTop: Spacing[2] },
+  ticketDesc: { ...Typography.body, color: c.textPrimary, marginTop: Spacing[2] },
   rowReverse: { flexDirection: 'row-reverse' },
   rtlText: { textAlign: 'right', writingDirection: 'rtl' },
 });

@@ -22,6 +22,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '@types';
 import { useForm, Controller } from 'react-hook-form';
@@ -68,6 +69,7 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
         <View style={styles.brandSection}>
@@ -115,10 +117,12 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: Colors.background },
   container: { flex: 1, backgroundColor: Colors.background },
   inner: { flexGrow: 1, padding: Spacing[6], justifyContent: 'center' },
   brandSection: { alignItems: 'center', marginBottom: Spacing[8] },

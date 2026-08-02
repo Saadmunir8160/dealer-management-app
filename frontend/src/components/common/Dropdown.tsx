@@ -13,6 +13,7 @@ import {
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '@theme';
 import { SelectOption } from '@types';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface DropdownProps {
   label?: string;
@@ -51,6 +52,7 @@ const Dropdown: React.FC<DropdownProps> = ({
   onClear,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const insets = useSafeAreaInsets();
   const hasValue = value !== undefined && value !== null && value !== '' && value !== 0;
   const selectedOption = hasValue
     ? options.find(o => String(o.value) === String(value))
@@ -96,7 +98,15 @@ const Dropdown: React.FC<DropdownProps> = ({
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <Modal visible={isOpen} transparent animationType="fade" onRequestClose={() => setIsOpen(false)}>
-        <View style={styles.overlay}>
+        <View
+          style={[
+            styles.overlay,
+            {
+              paddingTop: Math.max(insets.top, Spacing[4]),
+              paddingBottom: Math.max(insets.bottom, Spacing[4]),
+            },
+          ]}
+        >
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setIsOpen(false)} />
           <View style={styles.dropdown}>
             {options.length === 0 ? (
@@ -173,6 +183,7 @@ const styles = StyleSheet.create({
     ...Shadows.lg,
     overflow: 'hidden',
     zIndex: 2,
+    elevation: 8,
   },
   list: { maxHeight: 280 },
   listContent: { paddingVertical: Spacing[1] },

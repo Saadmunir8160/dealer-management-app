@@ -6,17 +6,14 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
-  useWindowDimensions,
   KeyboardAvoidingView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   AppStackParamList,
   Dealer,
   Product,
   CreateOrderRequest,
-  SelectOption,
   VoiceProductCandidate,
   VoiceCustomerCandidate,
   VoiceOrderFillResult,
@@ -25,12 +22,13 @@ import { OrderService } from '@services/orderService';
 import { DealerService } from '@services/dealerService';
 import { ProductService } from '@services/productService';
 import { useVoiceOrder } from '@hooks/useVoiceOrder';
-import { useToast } from '@context';
-import { Colors, Typography, Spacing, BorderRadius } from '@theme';
+import { useToast, useTheme } from '@context';
+import { Typography, Spacing, BorderRadius, Shadows, useThemedStyles } from '@theme';
+import type { AppColors } from '@theme/colors';
+import Screen from '@components/layout/Screen';
 import AppInput from '@components/inputs/AppInput';
 import AppButton from '@components/buttons/AppButton';
 import AppLoader from '@components/loaders/AppLoader';
-import { Dropdown } from '@components/common';
 import ProductPickerModal from '@components/modals/ProductPickerModal';
 import ConfirmationDialog from '@components/modals/ConfirmationDialog';
 import {
@@ -62,9 +60,9 @@ const DEFAULT_BAGS_PER_TRUCK = 600;
 const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
   const preselectedDealerId = route.params?.dealerId;
   const initialMode: InputMode = route.params?.mode === 'voice' ? 'voice' : 'manual';
-  const { width } = useWindowDimensions();
-  const wide = width >= 900;
   const { showError, showSuccess } = useToast();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createOrderUiStyles);
 
   const [mode, setMode] = useState<InputMode>(initialMode);
   const [loading, setLoading] = useState(true);
@@ -202,11 +200,6 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
     onInfo: (title, message) => showSuccess(title, message),
   });
 
-  const speechLangOptions: SelectOption[] = useMemo(
-    () => voice.speechLanguages.map(l => ({ label: l.label, value: l.code })),
-    [voice.speechLanguages],
-  );
-
   const itemCount = useMemo(
     () => items.filter(i => i.productId > 0).length,
     [items],
@@ -295,41 +288,6 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
     setPickerOpen(true);
     setInitialPickerShown(true);
   }, [loading, loadingProducts, products, mode, initialPickerShown]);
-
-  const onStartOver = async () => {
-    await voice.resetVoice();
-    setVoiceFilled(false);
-    setCustomerCandidates([]);
-    setItemCandidates([]);
-    setCouponNumber('');
-    setDeliveryDate('');
-    setPoNumber('');
-    setDriver('');
-    setVehicle('');
-    setOrderNotes('');
-    setItems([]);
-    setCouponError(false);
-    setCouponValid(null);
-    setCouponDiscount(0);
-    setDeliveryAddress('');
-    setBagsQty(String(DEFAULT_BAGS_PER_TRUCK));
-    // Restore default dealer so Place Order still works after Start Over
-    if (preselectedDealerId) {
-      setDealerId(preselectedDealerId);
-      const d = dealers.find(x => x.dealerId === preselectedDealerId);
-      setCustomerName(d?.dealerName ?? '');
-    } else {
-      const fallback = dealers.find(d => d.status !== false);
-      if (fallback) {
-        setDealerId(fallback.dealerId);
-        setCustomerName(fallback.dealerName);
-      } else {
-        setDealerId(0);
-        setCustomerName('');
-      }
-    }
-    void loadProducts();
-  };
 
   const onPickCustomerCandidate = (c: VoiceCustomerCandidate) => {
     setDealerId(c.dealerId);
@@ -566,76 +524,72 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
   if (loading) return <AppLoader message="Loading..." />;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <Screen edges={['bottom', 'left', 'right']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
       >
         <ScrollView
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.title}>Order Details</Text>
-          <Text style={styles.subtitle}>
-            {orderStep === 'lines' && mode === 'manual'
-              ? 'Review order lines, set bags per truck, then proceed to checkout.'
-              : 'Enter customer, coupon, and delivery details, then place your order.'}
-          </Text>
+          <View style={styles.heroCopy}>
+            <Text style={styles.title}>{mode === 'voice' ? 'Voice Order' : 'New Order'}</Text>
+            {mode === 'voice' ? (
+              <Text style={styles.subtitle}>Hold mic · speak · release</Text>
+            ) : (
+              <Text style={styles.subtitle}>
+                {orderStep === 'lines'
+                  ? 'Pick product, set bags per truck, then place with coupon.'
+                  : 'Confirm coupon and details, then place your order.'}
+              </Text>
+            )}
+          </View>
 
-          {/* Input method — hide on manual lines step for UCIC-style Order Details */}
+          {/* Compact mode switch — Manual can jump in; Voice stays primary */}
           {(mode === 'voice' || orderStep === 'checkout') && (
-          <View style={styles.methodCard}>
-            <View style={styles.methodCopy}>
-              <Text style={styles.methodTitle}>Choose Input Method</Text>
-              <Text style={styles.methodHint}>Select how you want to create this order.</Text>
-            </View>
-            <View style={styles.segment}>
-              <TouchableOpacity
-                style={[styles.segmentBtn, mode === 'voice' && styles.segmentBtnActive]}
-                onPress={() => setMode('voice')}
-              >
-                <Text style={[styles.segmentText, mode === 'voice' && styles.segmentTextActive]}>
-                  Create with Voice
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.segmentBtn, mode === 'manual' && styles.segmentBtnActive]}
-                onPress={() => {
-                  setMode('manual');
-                  if (itemCount === 0) setPickerOpen(true);
-                }}
-              >
-                <Text style={[styles.segmentText, mode === 'manual' && styles.segmentTextActive]}>
-                  Create Manually
-                </Text>
-              </TouchableOpacity>
-            </View>
+          <View style={styles.modeSwitchRow}>
+            <TouchableOpacity
+              style={[styles.modeChip, mode === 'voice' && styles.modeChipActive]}
+              onPress={() => setMode('voice')}
+              activeOpacity={0.85}
+            >
+              <Ionicons
+                name="mic"
+                size={16}
+                color={mode === 'voice' ? colors.white : colors.primary}
+              />
+              <Text style={[styles.modeChipText, mode === 'voice' && styles.modeChipTextActive]}>
+                Voice
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modeChip, mode === 'manual' && styles.modeChipActive]}
+              onPress={() => {
+                setMode('manual');
+                if (itemCount === 0) setPickerOpen(true);
+              }}
+              activeOpacity={0.85}
+            >
+              <Ionicons
+                name="create-outline"
+                size={16}
+                color={mode === 'manual' ? colors.white : colors.primary}
+              />
+              <Text style={[styles.modeChipText, mode === 'manual' && styles.modeChipTextActive]}>
+                Manual
+              </Text>
+            </TouchableOpacity>
           </View>
           )}
 
-          <View style={[styles.bodyRow, wide && styles.bodyRowWide]}>
+          <View style={styles.bodyCol}>
             {/* Voice panel */}
             {mode === 'voice' && (
-              <View style={[styles.panel, wide && styles.voicePanelWide]}>
-                <View style={styles.panelHead}>
-                  <Text style={styles.panelTitle}>Voice Assistant</Text>
-                </View>
-
-                <AIStatus
-                  phase={voice.phase}
-                  progress={voice.progress}
-                  message={voice.statusMessage}
-                />
-
-                <Dropdown
-                  label="Speech language"
-                  options={speechLangOptions}
-                  value={voice.language}
-                  onChange={val => voice.setLanguage(String(val))}
-                  placeholder="Select language"
-                  containerStyle={styles.langDropdown}
-                />
-
+              <View style={styles.voicePanel}>
                 <VoiceRecorder
                   isListening={voice.isLiveListening}
                   processing={voice.processing}
@@ -644,24 +598,22 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
                   pulse={voice.pulse}
                   onPressIn={voice.onMicHoldStart}
                   onPressOut={voice.onMicHoldEnd}
-                  hint={
-                    voice.isLiveListening && voice.partialTranscript
-                      ? `Live: ${voice.partialTranscript}`
-                      : undefined
-                  }
                 />
+
+                {(voice.phase !== 'idle' && voice.phase !== 'success') || voice.statusMessage ? (
+                  <AIStatus
+                    phase={voice.phase}
+                    progress={voice.progress}
+                    message={voice.statusMessage}
+                  />
+                ) : null}
 
                 <TranscriptPanel
                   liveText={
                     voice.isLiveListening && voice.partialTranscript
                       ? voice.partialTranscript
-                      : voice.liveTranscript || voice.typedCommand || ' - '
+                      : voice.liveTranscript || '—'
                   }
-                  typedCommand={voice.typedCommand}
-                  onChangeTyped={voice.setTypedCommand}
-                  onExtract={voice.onRunTypedCommand}
-                  extracting={voice.processing}
-                  extractLabel="Fill order"
                 />
 
                 {customerCandidates.length > 1 && (
@@ -705,46 +657,6 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
                   </View>
                 ))}
 
-                <View style={styles.voiceActions}>
-                  <TouchableOpacity
-                    style={[
-                      styles.outlineBtn,
-                      styles.stopBtn,
-                      !voice.isLiveListening && styles.outlineBtnDisabled,
-                    ]}
-                    onPress={voice.onStopRecording}
-                    disabled={!voice.isLiveListening}
-                    accessibilityLabel="Stop recording"
-                  >
-                    <Text style={styles.stopBtnText} numberOfLines={1}>
-                      Stop
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.outlineBtn,
-                      styles.resetBtn,
-                      voice.processing && styles.outlineBtnDisabled,
-                    ]}
-                    onPress={voice.onRetryExtract}
-                    disabled={voice.processing}
-                    accessibilityLabel="Retry"
-                  >
-                    <Text style={styles.resetBtnText} numberOfLines={1}>
-                      Retry
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.outlineBtn, styles.resetBtn]}
-                    onPress={onStartOver}
-                    accessibilityLabel="Start over"
-                  >
-                    <Text style={styles.resetBtnText} numberOfLines={1}>
-                      Start Over
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
                 {!voice.isSupported && (
                   <Text style={styles.warn}>
                     {Platform.OS === 'web'
@@ -756,14 +668,20 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
             )}
 
             {/* Order details */}
-            <View style={[styles.panel, styles.detailsPanel, wide && mode === 'voice' && styles.detailsWide]}>
+            <View style={styles.detailsPanel}>
               <View style={styles.panelHead}>
-                <Text style={styles.panelTitle}>
-                  {orderStep === 'lines' && mode === 'manual' ? 'Order Lines' : 'Order Details'}
-                </Text>
+                <View style={styles.panelTitleRow}>
+                  <View style={styles.panelIconWrap}>
+                    <Ionicons name="document-text-outline" size={18} color={colors.primary} />
+                  </View>
+                  <Text style={styles.panelTitle}>
+                    {orderStep === 'lines' && mode === 'manual' ? 'Order Lines' : 'Order Details'}
+                  </Text>
+                </View>
                 {voiceFilled && (
                   <View style={styles.autoBadge}>
-                    <Text style={styles.autoBadgeText}>Auto-filled from voice</Text>
+                    <Ionicons name="flash" size={12} color={colors.success} />
+                    <Text style={styles.autoBadgeText}>Auto-filled</Text>
                   </View>
                 )}
               </View>
@@ -774,7 +692,7 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
                   <Text style={styles.linesTitle}>Order Lines ({itemCount})</Text>
                   {itemCount > 0 ? (
                     <TouchableOpacity style={styles.clearBtn} onPress={clearItems}>
-                      <Ionicons name="trash-outline" size={16} color={Colors.error} />
+                      <Ionicons name="trash-outline" size={16} color={colors.error} />
                       <Text style={styles.clearBtnText}>Clear</Text>
                     </TouchableOpacity>
                   ) : null}
@@ -845,7 +763,7 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
                             onPress={() => removeItem(index)}
                             accessibilityLabel="Delete item"
                           >
-                            <Ionicons name="trash-outline" size={18} color={Colors.error} />
+                            <Ionicons name="trash-outline" size={18} color={colors.error} />
                           </TouchableOpacity>
                         </View>
                       );
@@ -942,60 +860,129 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
           onCancel={() => setConfirmLowConfidence(false)}
         />
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   );
 };
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
-  container: { padding: Spacing[4], paddingBottom: Spacing[10] },
-  title: { ...Typography.h4, color: Colors.textPrimary },
+const createOrderUiStyles = (c: AppColors) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: c.background },
+  container: { padding: Spacing[4], paddingBottom: Spacing[12] },
+  heroCopy: { marginBottom: Spacing[3], gap: Spacing[1] },
+  title: { ...Typography.h3, color: c.textPrimary, fontWeight: '700' },
   subtitle: {
     ...Typography.body,
-    color: Colors.textSecondary,
-    marginTop: Spacing[1],
-    marginBottom: Spacing[4],
+    color: c.textSecondary,
   },
-  methodCard: {
-    backgroundColor: Colors.surface,
+  modeSwitchRow: {
+    flexDirection: 'row',
+    gap: Spacing[2],
+    marginBottom: Spacing[3],
+  },
+  modeChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: 40,
     borderRadius: BorderRadius.lg,
+    borderWidth: 1.5,
+    borderColor: c.border,
+    backgroundColor: c.gray100,
+    paddingHorizontal: Spacing[3],
+  },
+  modeChipActive: {
+    backgroundColor: c.primary,
+    borderColor: c.primary,
+  },
+  modeChipText: { ...Typography.label, color: c.textSecondary, fontWeight: '700' },
+  modeChipTextActive: { color: c.white },
+  langChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: Spacing[2],
+    marginBottom: Spacing[3],
+  },
+  langChip: {
+    paddingHorizontal: Spacing[3],
+    paddingVertical: Spacing[1],
+    borderRadius: BorderRadius.full,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: c.border,
+    backgroundColor: c.gray100,
+  },
+  langChipActive: {
+    backgroundColor: c.primaryLight,
+    borderColor: c.primary,
+  },
+  langChipText: { ...Typography.caption, color: c.textSecondary, fontWeight: '600' },
+  langChipTextActive: { color: c.primary, fontWeight: '700' },
+  methodCard: {
+    backgroundColor: c.surface,
+    borderRadius: BorderRadius.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: c.border,
     padding: Spacing[4],
     marginBottom: Spacing[4],
     gap: Spacing[3],
+    ...(Shadows.sm as object),
   },
   methodCopy: { gap: 2 },
-  methodTitle: { ...Typography.h5, color: Colors.textPrimary },
-  methodHint: { ...Typography.caption, color: Colors.textSecondary },
-  segment: { flexDirection: 'row', gap: Spacing[2], flexWrap: 'wrap' },
+  methodTitle: { ...Typography.h5, color: c.textPrimary, fontWeight: '700' },
+  methodHint: { ...Typography.caption, color: c.textSecondary },
+  segment: { flexDirection: 'row', gap: Spacing[2] },
   segmentBtn: {
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-    paddingVertical: Spacing[2],
-    paddingHorizontal: Spacing[4],
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing[2],
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1.5,
+    borderColor: c.border,
+    backgroundColor: c.gray100,
+    paddingVertical: Spacing[3],
+    paddingHorizontal: Spacing[3],
+    minHeight: 48,
   },
   segmentBtnActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: c.primary,
+    borderColor: c.primary,
   },
-  segmentText: { ...Typography.button, color: Colors.textSecondary },
-  segmentTextActive: { color: Colors.white },
-  bodyRow: { gap: Spacing[4], marginBottom: Spacing[4] },
-  bodyRowWide: { flexDirection: 'row', alignItems: 'flex-start' },
-  panel: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
+  segmentText: { ...Typography.button, color: c.textSecondary, fontWeight: '700' },
+  segmentTextActive: { color: c.white },
+  bodyCol: {
+    width: '100%',
+    gap: Spacing[4],
+    marginBottom: Spacing[4],
+  },
+  voicePanel: {
+    width: '100%',
+    backgroundColor: c.surface,
+    borderRadius: BorderRadius.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: c.border,
     padding: Spacing[4],
-    flex: 1,
+    ...(Shadows.sm as object),
   },
-  voicePanelWide: { flex: 0.9, maxWidth: 420 },
-  detailsPanel: { flex: 1.4 },
-  detailsWide: { flex: 1.6 },
+  detailsPanel: {
+    width: '100%',
+    backgroundColor: c.surface,
+    borderRadius: BorderRadius.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: c.border,
+    padding: Spacing[4],
+    ...(Shadows.sm as object),
+  },
+  panel: {
+    backgroundColor: c.surface,
+    borderRadius: BorderRadius.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: c.border,
+    padding: Spacing[4],
+    ...(Shadows.sm as object),
+  },
   panelHead: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1004,24 +991,33 @@ const styles = StyleSheet.create({
     gap: Spacing[2],
     flexWrap: 'wrap',
   },
-  panelTitle: { ...Typography.h5, color: Colors.textPrimary },
+  panelTitleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2] },
+  panelIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: c.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  panelTitle: { ...Typography.h5, color: c.textPrimary, fontWeight: '700' },
   listeningBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: Colors.successLight,
+    backgroundColor: c.successLight,
     paddingHorizontal: Spacing[2],
     paddingVertical: 4,
     borderRadius: BorderRadius.full,
   },
-  listeningBadgeText: { ...Typography.caption, color: Colors.secondaryDark, fontWeight: '700' },
+  listeningBadgeText: { ...Typography.caption, color: c.secondaryDark, fontWeight: '700' },
   liveDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: Colors.gray400,
+    backgroundColor: c.gray400,
   },
-  liveDotOn: { backgroundColor: Colors.success },
+  liveDotOn: { backgroundColor: c.success },
   micRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1033,7 +1029,7 @@ const styles = StyleSheet.create({
   waveBar: {
     width: 3,
     borderRadius: 2,
-    backgroundColor: Colors.primary,
+    backgroundColor: c.primary,
   },
   micBtn: { alignItems: 'center', justifyContent: 'center' },
   micListening: { opacity: 1 },
@@ -1043,7 +1039,7 @@ const styles = StyleSheet.create({
     height: 118,
     borderRadius: 59,
     borderWidth: 2,
-    borderColor: Colors.primary + '55',
+    borderColor: c.primary + '55',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1051,36 +1047,36 @@ const styles = StyleSheet.create({
     width: 92,
     height: 92,
     borderRadius: 46,
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: c.primaryLight,
     borderWidth: 2,
-    borderColor: Colors.primary,
+    borderColor: c.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   micIcon: { fontSize: 36 },
   timerText: {
     ...Typography.h4,
-    color: Colors.primary,
+    color: c.primary,
     textAlign: 'center',
   },
   listenHint: {
     ...Typography.bodySmall,
-    color: Colors.textSecondary,
+    color: c.textSecondary,
     textAlign: 'center',
     marginBottom: Spacing[2],
   },
   transcriptBox: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md,
+    backgroundColor: c.surface,
+    borderRadius: BorderRadius.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: c.border,
     padding: Spacing[3],
     marginBottom: Spacing[3],
     gap: Spacing[1],
   },
   transcriptText: {
     ...Typography.body,
-    color: Colors.textPrimary,
+    color: c.textPrimary,
     lineHeight: 22,
   },
   fieldFull: {
@@ -1089,20 +1085,20 @@ const styles = StyleSheet.create({
   },
   candidateTitle: {
     ...Typography.label,
-    color: Colors.primaryDark,
+    color: c.primaryDark,
     marginBottom: Spacing[1],
   },
   candidateWrap: { marginBottom: Spacing[3] },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[2] },
   chip: {
     borderWidth: 1,
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryLight,
+    borderColor: c.primary,
+    backgroundColor: c.primaryLight,
     borderRadius: BorderRadius.full,
     paddingHorizontal: Spacing[3],
     paddingVertical: Spacing[2],
   },
-  chipText: { ...Typography.caption, color: Colors.primary, fontWeight: '600' },
+  chipText: { ...Typography.caption, color: c.primary, fontWeight: '600' },
   voiceActions: {
     flexDirection: 'row',
     alignItems: 'stretch',
@@ -1113,44 +1109,47 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 44,
     borderWidth: 1.5,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
     paddingVertical: Spacing[2],
     paddingHorizontal: Spacing[2],
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: c.surface,
   },
   outlineBtnDisabled: {
     opacity: 0.45,
   },
   stopBtn: {
-    borderColor: Colors.error,
-    backgroundColor: Colors.errorLight,
+    borderColor: c.error,
+    backgroundColor: c.errorLight,
   },
   stopBtnText: {
     ...Typography.label,
-    color: Colors.error,
+    color: c.error,
     fontWeight: '700',
     textAlign: 'center',
   },
   resetBtn: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryLight,
+    borderColor: c.primary,
+    backgroundColor: c.primaryLight,
   },
   resetBtnText: {
     ...Typography.label,
-    color: Colors.primary,
+    color: c.primary,
     fontWeight: '700',
     textAlign: 'center',
   },
-  warn: { ...Typography.caption, color: Colors.warning, marginTop: Spacing[2] },
+  warn: { ...Typography.caption, color: c.warning, marginTop: Spacing[2] },
   autoBadge: {
-    backgroundColor: Colors.successLight,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: c.successLight,
     paddingHorizontal: Spacing[2],
     paddingVertical: 4,
     borderRadius: BorderRadius.full,
   },
-  autoBadgeText: { ...Typography.caption, color: Colors.secondaryDark, fontWeight: '700' },
+  autoBadgeText: { ...Typography.caption, color: c.secondaryDark, fontWeight: '700' },
   formGrid: { gap: Spacing[3], marginBottom: Spacing[4] },
   formGridWide: { flexDirection: 'row', flexWrap: 'wrap' },
   field: { flexGrow: 1, flexBasis: '45%', minWidth: 200 },
@@ -1162,27 +1161,27 @@ const styles = StyleSheet.create({
   },
   bagsChip: {
     borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
+    borderColor: c.border,
+    backgroundColor: c.surface,
     borderRadius: BorderRadius.full,
     paddingHorizontal: Spacing[3],
     paddingVertical: Spacing[1],
   },
   bagsChipActive: {
-    backgroundColor: Colors.primaryLight,
-    borderColor: Colors.primary,
+    backgroundColor: c.primaryLight,
+    borderColor: c.primary,
   },
   bagsChipText: {
     ...Typography.caption,
-    color: Colors.textSecondary,
+    color: c.textSecondary,
     fontWeight: '600',
   },
   bagsChipTextActive: {
-    color: Colors.primaryDark,
+    color: c.primaryDark,
   },
   bagsPerTruckLabel: {
     ...Typography.caption,
-    color: Colors.textSecondary,
+    color: c.textSecondary,
     marginBottom: 6,
   },
   bagsToggleRow: {
@@ -1193,45 +1192,45 @@ const styles = StyleSheet.create({
     minWidth: 52,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
     borderWidth: 1.5,
-    borderColor: Colors.primary,
-    backgroundColor: Colors.white,
+    borderColor: c.primary,
+    backgroundColor: c.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   bagsToggleActive: {
-    backgroundColor: Colors.warning,
-    borderColor: Colors.warning,
+    backgroundColor: c.warning,
+    borderColor: c.warning,
   },
   bagsToggleText: {
     ...Typography.label,
-    color: Colors.primary,
+    color: c.primary,
     fontWeight: '700',
   },
   bagsToggleTextActive: {
-    color: Colors.white,
+    color: c.white,
   },
-  link: { ...Typography.label, color: Colors.primary, marginTop: Spacing[1] },
+  link: { ...Typography.label, color: c.primary, marginTop: Spacing[1] },
   itemsHead: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Spacing[2],
   },
-  itemsTitle: { ...Typography.h5, color: Colors.textPrimary },
+  itemsTitle: { ...Typography.h5, color: c.textPrimary },
   addItemBtn: {
-    backgroundColor: Colors.primary,
+    backgroundColor: c.primary,
     paddingHorizontal: Spacing[3],
     paddingVertical: Spacing[2],
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
   },
-  addItemText: { ...Typography.button, color: Colors.white, fontSize: 13 },
+  addItemText: { ...Typography.button, color: c.white, fontSize: 13 },
   tableHead: {
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: c.border,
     paddingBottom: Spacing[2],
     marginBottom: Spacing[1],
   },
@@ -1240,11 +1239,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: Spacing[2],
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: c.border,
     gap: 4,
   },
-  th: { ...Typography.caption, color: Colors.textSecondary, fontWeight: '700' },
-  td: { ...Typography.bodySmall, color: Colors.textPrimary },
+  th: { ...Typography.caption, color: c.textSecondary, fontWeight: '700' },
+  td: { ...Typography.bodySmall, color: c.textPrimary },
   colNum: { width: 28 },
   colProduct: { flex: 1.8, minWidth: 120 },
   colQty: { width: 72 },
@@ -1252,23 +1251,23 @@ const styles = StyleSheet.create({
   colPrice: { width: 88, textAlign: 'right' },
   colTotal: { width: 96, textAlign: 'right' },
   colAction: { width: 40, alignItems: 'center' },
-  totalCell: { fontWeight: '700', color: Colors.textPrimary },
+  totalCell: { fontWeight: '700', color: c.textPrimary },
   deleteBtn: {
     width: 36,
     height: 36,
     borderRadius: BorderRadius.sm,
-    backgroundColor: Colors.errorLight,
+    backgroundColor: c.errorLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   deleteIcon: {
     fontSize: 16,
-    color: Colors.error,
+    color: c.error,
   },
   langDropdown: { marginBottom: Spacing[2] },
   typeLabel: {
     ...Typography.caption,
-    color: Colors.textSecondary,
+    color: c.textSecondary,
     marginBottom: Spacing[1],
   },
   typeRow: {
@@ -1278,8 +1277,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing[2],
   },
   runTypedBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.md,
+    backgroundColor: c.primary,
+    borderRadius: BorderRadius.lg,
     paddingHorizontal: Spacing[3],
     paddingVertical: Spacing[3],
     marginTop: 2,
@@ -1288,19 +1287,19 @@ const styles = StyleSheet.create({
     minWidth: 88,
   },
   runTypedBtnDisabled: { opacity: 0.5 },
-  runTypedText: { ...Typography.button, color: Colors.white, fontSize: 13, textAlign: 'center' },
+  runTypedText: { ...Typography.button, color: c.white, fontSize: 13, textAlign: 'center' },
   totalsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: Spacing[4],
   },
-  totalItems: { ...Typography.body, color: Colors.success },
+  totalItems: { ...Typography.body, color: c.success },
   totalItemsStrong: { fontWeight: '800' },
-  totalAmount: { ...Typography.h5, color: Colors.success },
+  totalAmount: { ...Typography.h5, color: c.success },
   totalAmountLabel: {
     ...Typography.caption,
-    color: Colors.textSecondary,
+    color: c.textSecondary,
     textAlign: 'right',
     marginTop: 2,
   },
@@ -1314,12 +1313,12 @@ const styles = StyleSheet.create({
   footerSave: { minWidth: 200 },
 
   linesCard: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: c.border,
+    borderRadius: BorderRadius.xl,
     padding: Spacing[3],
     marginBottom: Spacing[4],
-    backgroundColor: Colors.white,
+    backgroundColor: c.gray100,
   },
   linesHead: {
     flexDirection: 'row',
@@ -1327,19 +1326,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing[3],
   },
-  linesTitle: { ...Typography.h5, color: Colors.textPrimary },
+  linesTitle: { ...Typography.h5, color: c.textPrimary },
   clearBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     borderWidth: 1,
-    borderColor: Colors.error,
-    borderRadius: BorderRadius.md,
+    borderColor: c.error,
+    borderRadius: BorderRadius.lg,
     paddingHorizontal: Spacing[3],
     paddingVertical: Spacing[1],
-    backgroundColor: Colors.white,
+    backgroundColor: c.surface,
   },
-  clearBtnText: { ...Typography.caption, color: Colors.error, fontWeight: '700' },
+  clearBtnText: { ...Typography.caption, color: c.error, fontWeight: '700' },
   linesEmpty: {
     alignItems: 'center',
     gap: Spacing[3],
@@ -1347,7 +1346,7 @@ const styles = StyleSheet.create({
   },
   linesEmptyText: {
     ...Typography.body,
-    color: Colors.textSecondary,
+    color: c.textSecondary,
     textAlign: 'center',
   },
   lineTableHead: {
@@ -1355,13 +1354,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: Spacing[2],
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: c.border,
     marginBottom: Spacing[2],
     gap: Spacing[1],
   },
   lineTh: {
     ...Typography.caption,
-    color: Colors.textSecondary,
+    color: c.textSecondary,
     fontWeight: '700',
     textTransform: 'uppercase',
   },
@@ -1375,7 +1374,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     paddingVertical: Spacing[3],
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
+    borderBottomColor: c.border,
     gap: Spacing[2],
   },
   lineTotalCell: {
@@ -1383,7 +1382,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     alignSelf: 'center',
     ...Typography.label,
-    color: Colors.textPrimary,
+    color: c.textPrimary,
     fontWeight: '700',
   },
   lineColProduct: { flexGrow: 1, flexBasis: '100%', minWidth: 0 },
@@ -1401,18 +1400,18 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     alignSelf: 'center',
     ...Typography.label,
-    color: Colors.textPrimary,
+    color: c.textPrimary,
     fontWeight: '700',
   },
   lineColAction: { width: 44, textAlign: 'center' },
   lineProductName: {
     ...Typography.body,
-    color: Colors.textPrimary,
+    color: c.textPrimary,
     fontWeight: '600',
   },
   lineUnitText: {
     ...Typography.label,
-    color: Colors.textPrimary,
+    color: c.textPrimary,
     fontWeight: '700',
   },
   lineDelete: {
@@ -1420,8 +1419,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: BorderRadius.sm,
     borderWidth: 1,
-    borderColor: Colors.error,
-    backgroundColor: Colors.errorLight,
+    borderColor: c.error,
+    backgroundColor: c.errorLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1430,50 +1429,51 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     paddingVertical: Spacing[2],
   },
-  addProductsText: { ...Typography.label, color: Colors.primary, fontWeight: '700' },
+  addProductsText: { ...Typography.label, color: c.primary, fontWeight: '700' },
   infoCard: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: c.border,
+    borderRadius: BorderRadius.xl,
     padding: Spacing[3],
     marginBottom: Spacing[4],
     gap: Spacing[2],
-    backgroundColor: Colors.white,
+    backgroundColor: c.gray100,
   },
-  infoTitle: { ...Typography.h5, color: Colors.textPrimary, marginBottom: Spacing[1] },
+  infoTitle: { ...Typography.h5, color: c.textPrimary, marginBottom: Spacing[1] },
   summaryCard: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: c.border,
+    borderRadius: BorderRadius.xl,
     padding: Spacing[4],
     gap: Spacing[2],
-    backgroundColor: Colors.surface,
+    backgroundColor: c.surface,
+    ...(Shadows.sm as object),
   },
-  summaryTitle: { ...Typography.h5, color: Colors.textPrimary, marginBottom: Spacing[2] },
+  summaryTitle: { ...Typography.h5, color: c.textPrimary, marginBottom: Spacing[2] },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 4,
   },
-  summaryLabel: { ...Typography.body, color: Colors.textSecondary },
-  summaryValue: { ...Typography.label, color: Colors.textPrimary, fontWeight: '700' },
+  summaryLabel: { ...Typography.body, color: c.textSecondary },
+  summaryValue: { ...Typography.label, color: c.textPrimary, fontWeight: '700' },
   couponAlert: {
-    backgroundColor: Colors.errorLight,
-    borderRadius: BorderRadius.md,
+    backgroundColor: c.errorLight,
+    borderRadius: BorderRadius.lg,
     padding: Spacing[3],
     marginTop: Spacing[2],
     marginBottom: Spacing[1],
   },
-  couponAlertText: { ...Typography.bodySmall, color: Colors.error, fontWeight: '600' },
-  couponHint: { ...Typography.bodySmall, color: Colors.gray600, marginTop: Spacing[1] },
+  couponAlertText: { ...Typography.bodySmall, color: c.error, fontWeight: '600' },
+  couponHint: { ...Typography.bodySmall, color: c.gray600, marginTop: Spacing[1] },
   summaryActions: {
     flexDirection: 'row',
     gap: Spacing[3],
     marginTop: Spacing[3],
   },
   placeBtn: { flex: 1.4 },
-  proceedBtn: { flex: 1.6, backgroundColor: Colors.secondary },
+  proceedBtn: { flex: 1.6, backgroundColor: c.secondary },
   backBtn: { flex: 1 },
 });
 

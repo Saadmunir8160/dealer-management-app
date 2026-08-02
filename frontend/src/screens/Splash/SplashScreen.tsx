@@ -1,121 +1,144 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// src/screens/Splash/SplashScreen.tsx
-//
-// WHY THIS SCREEN EXISTS:
-//   The splash screen is the first thing the user sees when opening the app.
-//   While this screen is visible, the app is:
-//     1. Hydrating Redux state from AsyncStorage (restoring login session)
-//     2. Checking if user is authenticated
-//     3. Deciding whether to show Auth or App navigator
-//   It gives the app a professional feel (like SAP, Salesforce, Zoho).
-//
-// BUSINESS LOGIC:
-//   None — pure branding screen. Navigation is handled by RootNavigator.
-//
-// NAVIGATION FLOW:
-//   Splash → (if authenticated) → Dashboard
-//   Splash → (if not authenticated) → Login
-//
-// FUTURE API INTEGRATION:
-//   No API calls needed. This screen is purely visual.
-//
-// BEST PRACTICES:
-//   - No business logic here
-//   - No API calls here
-//   - Keep it lightweight — it should render instantly
-//   - Uses only theme tokens (no hardcoded colors/sizes)
-// ─────────────────────────────────────────────────────────────────────────────
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing, Image } from 'react-native';
 import { Colors, Typography, Spacing, BorderRadius } from '@theme';
+
+const LOGO = require('../../../assets/ucic-logo.png');
 
 const SplashScreen = () => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
-  const dotAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.88)).current;
+  const pulse = useRef(new Animated.Value(0.35)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-      Animated.spring(scaleAnim, { toValue: 1, tension: 50, friction: 7, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, tension: 48, friction: 8, useNativeDriver: true }),
     ]).start();
 
     Animated.loop(
       Animated.sequence([
-        Animated.timing(dotAnim, { toValue: 1, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(dotAnim, { toValue: 0, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0.35,
+          duration: 900,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
       ]),
     ).start();
-  }, []);
+  }, [fadeAnim, scaleAnim, pulse]);
 
   return (
-    <View style={styles.container}>
-      <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
-        <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>DMS</Text>
+    <View style={styles.root}>
+      <View style={[styles.blob, styles.blobTop]} />
+      <View style={[styles.blob, styles.blobBottom]} />
+
+      <Animated.View
+        style={[styles.content, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}
+      >
+        <View style={styles.logoCard}>
+          <Image source={LOGO} style={styles.logo} resizeMode="contain" />
         </View>
-        <Text style={styles.title}>Dealer Management</Text>
-        <Text style={styles.subtitle}>Enterprise System</Text>
+        <Text style={styles.brandEn}>UNITED CEMENT</Text>
+        <Text style={styles.brandSub}>INDUSTRIAL COMPANY</Text>
+        <Text style={styles.brandAr}>شركة الأسمنت المتحدة الصناعية</Text>
+        <View style={styles.pill}>
+          <Text style={styles.pillText}>Customer Portal</Text>
+        </View>
       </Animated.View>
 
-      <Animated.View style={[styles.loaderContainer, { opacity: dotAnim }]}>
-        <View style={styles.loaderRow}>
-          <View style={styles.dot} />
-          <View style={[styles.dot, styles.dotMid]} />
-          <View style={styles.dot} />
+      <Animated.View style={[styles.loader, { opacity: pulse }]}>
+        <View style={styles.barTrack}>
+          <View style={styles.barFill} />
         </View>
+        <Text style={styles.loadingText}>Loading your workspace…</Text>
       </Animated.View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.primaryDark,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  content: { alignItems: 'center' },
-  logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: BorderRadius['2xl'],
+  blob: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: 'rgba(37, 99, 235, 0.35)',
+  },
+  blobTop: { top: -80, right: -60 },
+  blobBottom: { bottom: -100, left: -80, backgroundColor: 'rgba(245, 158, 11, 0.18)' },
+  content: { alignItems: 'center', paddingHorizontal: Spacing[6] },
+  logoCard: {
+    width: 112,
+    height: 112,
+    borderRadius: BorderRadius.xl,
     backgroundColor: Colors.white,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: Spacing[5],
+    padding: Spacing[3],
   },
-  logoText: {
-    fontSize: 36,
-    fontFamily: 'Inter-Bold',
-    color: Colors.primary,
-  },
-  title: {
-    ...Typography.h3,
+  logo: { width: 88, height: 88 },
+  brandEn: {
+    ...Typography.h4,
     color: Colors.white,
-    marginBottom: Spacing[1],
+    letterSpacing: 1.2,
+    fontWeight: '800',
   },
-  subtitle: {
+  brandSub: {
+    ...Typography.label,
+    color: 'rgba(255,255,255,0.85)',
+    letterSpacing: 2,
+    marginTop: 4,
+  },
+  brandAr: {
     ...Typography.body,
     color: 'rgba(255,255,255,0.7)',
+    marginTop: Spacing[3],
+    textAlign: 'center',
   },
-  loaderContainer: {
+  pill: {
+    marginTop: Spacing[4],
+    paddingHorizontal: Spacing[4],
+    paddingVertical: Spacing[2],
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.accent,
+  },
+  pillText: { ...Typography.label, color: Colors.white, fontWeight: '700' },
+  loader: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 72,
+    alignItems: 'center',
+    width: '70%',
   },
-  loaderRow: {
-    flexDirection: 'row',
-    gap: Spacing[2],
+  barTrack: {
+    width: '100%',
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    overflow: 'hidden',
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.6)',
-  },
-  dotMid: {
+  barFill: {
+    width: '55%',
+    height: '100%',
+    borderRadius: 2,
     backgroundColor: Colors.white,
+  },
+  loadingText: {
+    ...Typography.caption,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: Spacing[3],
   },
 });
 

@@ -189,7 +189,7 @@ const NotificationItem: React.FC<NotifItemProps> = React.memo(({ item, onPress }
     style={[notifStyles.container, !item.isRead && notifStyles.unread]}
     activeOpacity={0.7}
   >
-    {!item.isRead && <View style={notifStyles.unreadDot} />}
+    {!item.isRead && <View style={notifStyles.unreadDot} pointerEvents="none" />}
 
     <View style={[notifStyles.icon, { backgroundColor: getTypeBg(item.type) }]}>
       <Text style={notifStyles.iconText}>{getTypeIcon(item.type)}</Text>
@@ -245,7 +245,7 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
   }, []);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
       {/* ── Header ─────────────────────────────────────────────────── */}
       <View style={styles.header}>
         <View>

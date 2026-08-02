@@ -12,7 +12,7 @@ This uses the same Docker + Postgres setup already in the repo.
 ## What is already ready in code
 - `backend/Dockerfile` — API image
 - Postgres support (Npgsql)
-- Auto tables + admin seed: `admin` / `Admin@123`
+- Auto tables + admin seed: `admin@dealerapp.com` / `Admin@123` (username `admin` also works)
 - `backend/railway.toml`
 
 ---
@@ -75,8 +75,9 @@ git push -u origin main
 
 Login test (`POST /api/auth/login`):
 ```json
-{ "username": "admin", "password": "Admin@123" }
+{ "username": "admin@dealerapp.com", "password": "Admin@123" }
 ```
+(Username `admin` also works.)
 
 ---
 

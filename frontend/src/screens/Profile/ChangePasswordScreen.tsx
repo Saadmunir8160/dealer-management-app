@@ -41,8 +41,8 @@ const ChangePasswordScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+    <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}>
         <ScrollView contentContainerStyle={styles.container}>
           <Text style={styles.title}>Change Password</Text>
           <Text style={styles.subtitle}>Update your account password securely.</Text>

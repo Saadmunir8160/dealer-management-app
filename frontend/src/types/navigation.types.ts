@@ -9,8 +9,16 @@ export type AuthStackParamList = {
   OTP: { email: string };
 };
 
+export type BottomTabParamList = {
+  Dashboard: undefined;
+  Orders: undefined;
+  NewOrder: undefined;
+  Support: undefined;
+  Profile: undefined;
+};
+
 export type AppStackParamList = {
-  BottomTabs: undefined;
+  BottomTabs: undefined | { screen?: keyof BottomTabParamList };
   OrderDetail: { orderId: number };
   CreateOrder: { dealerId?: number; mode?: 'voice' | 'manual' };
   VoiceOrder: { dealerId?: number };
@@ -22,11 +30,4 @@ export type AppStackParamList = {
   DealerDetail: { dealerId: number };
   CreateDealer: undefined;
   EditDealer: { dealerId: number };
-};
-
-export type BottomTabParamList = {
-  Dashboard: undefined;
-  Orders: undefined;
-  Profile: undefined;
-  Support: undefined;
 };

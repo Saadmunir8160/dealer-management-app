@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Product } from '@types';
 import { Colors, Typography, Spacing, BorderRadius } from '@theme';
 
@@ -33,6 +34,7 @@ const ProductPickerModal: React.FC<Props> = ({
   onDone,
 }) => {
   const { height, width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
@@ -57,14 +59,22 @@ const ProductPickerModal: React.FC<Props> = ({
   };
 
   const dialogWidth = Math.min(width - 32, 640);
-  const listMaxHeight = Math.min(height * 0.55, 460);
+  const listMaxHeight = Math.min(height * 0.5, 460);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.overlay}>
+        <View
+          style={[
+            styles.overlay,
+            {
+              paddingTop: Math.max(insets.top, Spacing[4]),
+              paddingBottom: Math.max(insets.bottom, Spacing[4]),
+            },
+          ]}
+        >
           <TouchableWithoutFeedback>
-            <View style={[styles.dialog, { width: dialogWidth }]}>
+            <View style={[styles.dialog, { width: dialogWidth, maxHeight: height - insets.top - insets.bottom - 48 }]}>
               <View style={styles.header}>
                 <Text style={styles.title}>Please Select Item Code</Text>
                 <TouchableOpacity

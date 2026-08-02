@@ -167,7 +167,7 @@ const ReportsScreen: React.FC = () => {
 
   if (error) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
         <ErrorState message={error} onRetry={loadData} />
       </SafeAreaView>
     );
@@ -176,7 +176,7 @@ const ReportsScreen: React.FC = () => {
   const growth = report ? ((report.totalAmount - 0) / Math.max(1, 1)) * 100 : 0;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}

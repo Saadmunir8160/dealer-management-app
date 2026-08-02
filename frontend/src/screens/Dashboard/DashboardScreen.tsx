@@ -7,19 +7,24 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppStackParamList, DashboardResponse } from '@types';
 import { ReportService } from '@services/reportService';
-import { useToast, useLanguage } from '@context';
+import { useToast, useLanguage, useTheme } from '@context';
+import { useAuth } from '@hooks';
 import { formatDate } from '@utils';
-import { Colors, Typography, Spacing, BorderRadius } from '@theme';
+import { Typography, Spacing, BorderRadius, Shadows, useThemedStyles } from '@theme';
+import type { AppColors } from '@theme/colors';
+import { useLayoutMetrics } from '@theme/layout';
 import { PortalHeader, StatusChip, EmptyState } from '@components/common';
+import Screen from '@components/layout/Screen';
 import AppLoader from '@components/loaders/AppLoader';
 import AppCard from '@components/cards/AppCard';
 
 type NavProp = NativeStackNavigationProp<AppStackParamList>;
+type IonName = React.ComponentProps<typeof Ionicons>['name'];
 
 const getStatusType = (status: string): 'success' | 'warning' | 'error' | 'info' | 'primary' | 'neutral' => {
   const map: Record<string, 'success' | 'warning' | 'error' | 'info' | 'primary' | 'neutral'> = {
@@ -35,8 +40,12 @@ const getStatusType = (status: string): 'success' | 'warning' | 'error' | 'info'
 
 const DashboardScreen = () => {
   const navigation = useNavigation<NavProp>();
+  const { user } = useAuth();
   const { showError } = useToast();
   const { t, isRTL } = useLanguage();
+  const { colors } = useTheme();
+  const { scrollBottomPad } = useLayoutMetrics();
+  const styles = useThemedStyles(createDashStyles);
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,7 +63,6 @@ const DashboardScreen = () => {
       const dashRes = await ReportService.getDashboard();
       setData(dashRes);
     } catch {
-      // Keep UI usable; toast explains API/auth failure (re-login often fixes it)
       setData({
         stats: {
           totalOrders: 0,
@@ -82,225 +90,290 @@ const DashboardScreen = () => {
 
   const stats = data?.stats;
   const recentOrders = data?.recentOrders ?? [];
+  const deliveredApprox = Math.max(0, (stats?.totalOrders ?? 0) - (stats?.pendingOrders ?? 0));
+
+  const quick: { icon: IonName; label: string; color: string; onPress: () => void }[] = [
+    {
+      icon: 'mic',
+      label: 'Voice',
+      color: colors.primary,
+      onPress: () => goTo('CreateOrder', { mode: 'voice' }),
+    },
+    {
+      icon: 'add-circle',
+      label: t('newOrder'),
+      color: colors.accent,
+      onPress: () => goTo('CreateOrder', { mode: 'manual' }),
+    },
+    {
+      icon: 'cube-outline',
+      label: t('orders'),
+      color: colors.success,
+      onPress: () => navigation.navigate('Orders' as never),
+    },
+    {
+      icon: 'headset-outline',
+      label: t('support'),
+      color: colors.primaryDark,
+      onPress: () => navigation.navigate('Support' as never),
+    },
+  ];
+
+  const name =
+    (isRTL ? user?.customerNameAr || user?.fullName : user?.fullName || user?.customerNameAr) ||
+    'Dealer';
+  const nameIsArabic = /[\u0600-\u06FF]/.test(name);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <Screen edges={['top']}>
       <PortalHeader />
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, { paddingBottom: scrollBottomPad + 80 }]}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} tintColor={Colors.primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              loadData();
+            }}
+            tintColor={colors.primary}
+          />
         }
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.banner}>
-          <Text style={[styles.bannerTitle, isRTL && styles.rtlText]}>{t('welcomeBanner')}</Text>
+        <View style={styles.welcome}>
+          <Text style={[styles.hello, (isRTL || nameIsArabic) && styles.rtl]}>
+            {t('welcomeBanner')}
+          </Text>
+          <Text
+            style={[styles.name, (isRTL || nameIsArabic) && styles.rtl]}
+            numberOfLines={3}
+          >
+            {name}
+          </Text>
         </View>
 
-        <View style={styles.statsRow}>
-          <KpiCard
-            title={t('totalOrders')}
-            value={String(stats?.totalOrders ?? 0)}
-            hint={`+${stats?.ordersThisMonth ?? 0} ${t('thisMonth')}`}
-            accent={Colors.primary}
-            icon="🚚"
-            isRTL={isRTL}
-          />
-          <KpiCard
-            title={t('pendingOrders')}
-            value={String(stats?.pendingOrders ?? 0)}
-            hint={t('inProgress')}
-            accent={Colors.warning}
-            icon="⏳"
-            isRTL={isRTL}
-          />
-          <KpiCard
+        <View style={styles.kpiGrid}>
+          <Kpi
             title={t('availableCredit')}
             value={Number(stats?.availableCredit ?? 0).toFixed(2)}
-            hint={stats?.creditExpiry ? formatDate(stats.creditExpiry, 'MMM dd, yyyy') : '—'}
-            accent={Colors.success}
-            icon="💳"
+            icon="wallet-outline"
+            tint={colors.success}
             isRTL={isRTL}
+            styles={styles}
           />
+          <Kpi
+            title={t('pendingOrders')}
+            value={String(stats?.pendingOrders ?? 0)}
+            icon="time-outline"
+            tint={colors.warning}
+            isRTL={isRTL}
+            styles={styles}
+          />
+          <Kpi
+            title={t('deliveredOrders')}
+            value={String(deliveredApprox)}
+            icon="checkmark-done-outline"
+            tint={colors.primary}
+            isRTL={isRTL}
+            styles={styles}
+          />
+          <Kpi
+            title={t('totalOrders')}
+            value={String(stats?.totalOrders ?? 0)}
+            icon="layers-outline"
+            tint={colors.primaryDark}
+            isRTL={isRTL}
+            styles={styles}
+          />
+        </View>
+
+        <Text style={[styles.sectionTitle, isRTL && styles.rtl]}>{t('quickActions')}</Text>
+        <View style={styles.quickRow}>
+          {quick.map(q => (
+            <TouchableOpacity key={q.label} style={styles.quickBtn} onPress={q.onPress} activeOpacity={0.85}>
+              <View style={[styles.quickIcon, { backgroundColor: q.color + '18' }]}>
+                <Ionicons name={q.icon} size={22} color={q.color} />
+              </View>
+              <Text style={styles.quickLabel} numberOfLines={1}>
+                {q.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         <View style={[styles.sectionHeader, isRTL && styles.rowReverse]}>
-          <Text style={styles.sectionTitle}>{t('recentOrders')}</Text>
+          <Text style={styles.sectionTitleInline}>{t('recentOrders')}</Text>
           <TouchableOpacity onPress={() => navigation.navigate('Orders' as never)}>
             <Text style={styles.link}>{t('viewAllOrders')}</Text>
           </TouchableOpacity>
         </View>
 
-        <AppCard style={styles.tableCard}>
-          <View style={[styles.tableHead, isRTL && styles.rowReverse]}>
-            <Text style={[styles.th, styles.colCoupon]}>{t('coupon')}</Text>
-            <Text style={[styles.th, styles.colStatus]}>{t('status')}</Text>
-            <Text style={[styles.th, styles.colArea]}>{t('area')}</Text>
-          </View>
-          {recentOrders.length === 0 ? (
+        {recentOrders.length === 0 ? (
+          <AppCard shadow="sm">
             <EmptyState title={t('noRecentOrders')} message={t('noRecentOrdersMsg')} />
-          ) : (
-            recentOrders.map(order => (
-              <TouchableOpacity
-                key={order.orderId}
-                style={styles.orderBlock}
-                onPress={() => goTo('OrderDetail', { orderId: order.orderId })}
-              >
-                <View style={[styles.tableRow, isRTL && styles.rowReverse]}>
-                  <View style={styles.colCoupon}>
-                    <Text style={[styles.coupon, isRTL && styles.rtlText]}>{order.couponNumber ?? `#${order.orderId}`}</Text>
-                    <Text style={[styles.meta, isRTL && styles.rtlText]}>{formatDate(order.orderDate)}</Text>
-                  </View>
-                  <View style={styles.colStatus}>
-                    <StatusChip label={order.status} type={getStatusType(order.status)} />
-                  </View>
-                  <View style={styles.colArea}>
-                    <Text style={[styles.meta, isRTL && styles.rtlText]} numberOfLines={1}>{order.deliveryArea ?? '—'}</Text>
-                    <Text style={[styles.meta, isRTL && styles.rtlText]} numberOfLines={1}>{order.driver ?? t('noDriver')}</Text>
-                  </View>
-                </View>
-                <View style={[styles.ucicRow, isRTL && styles.rowReverse]}>
-                  <Text style={[styles.ucicItem, isRTL && styles.rtlText]}>
-                    {t('erpOrder')}: {order.erpOrderNumber ?? t('noErpOrder')}
+          </AppCard>
+        ) : (
+          recentOrders.map(order => (
+            <AppCard
+              key={order.orderId}
+              style={styles.orderCard}
+              shadow="sm"
+              onPress={() => goTo('OrderDetail', { orderId: order.orderId })}
+            >
+              <View style={[styles.orderTop, isRTL && styles.rowReverse]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.coupon, isRTL && styles.rtl]}>
+                    {order.couponNumber ?? `#${order.orderId}`}
                   </Text>
-                  <Text style={[styles.ucicItem, isRTL && styles.rtlText]}>
-                    {t('vehicle')}: {order.vehicle ?? '—'}
+                  <Text style={[styles.orderMeta, isRTL && styles.rtl]}>
+                    {formatDate(order.orderDate)} · {order.deliveryArea ?? '—'}
                   </Text>
                 </View>
-              </TouchableOpacity>
-            ))
-          )}
-        </AppCard>
-
-        <AppCard style={styles.helpCard}>
-          <Text style={[styles.helpTitle, isRTL && styles.rtlText]}>{t('needHelp')}</Text>
-          <Text style={[styles.helpText, isRTL && styles.rtlText]}>{t('needHelpMsg')}</Text>
-          <Text style={[styles.helpContact, isRTL && styles.rtlText]}>{data?.supportPhone ?? '+966 11 234 5678'}</Text>
-          <Text style={[styles.helpContact, isRTL && styles.rtlText]}>{data?.supportEmail ?? 'support@ucic.com'}</Text>
-          <TouchableOpacity
-            style={styles.helpBtn}
-            onPress={() => navigation.navigate('Support' as never)}
-          >
-            <Text style={styles.helpBtnText}>{t('contactSupport')}</Text>
-          </TouchableOpacity>
-        </AppCard>
+                <StatusChip label={order.status} type={getStatusType(order.status)} />
+              </View>
+              <View style={[styles.orderBottom, isRTL && styles.rowReverse]}>
+                <Text style={styles.orderMeta}>
+                  {t('erpOrder')}: {order.erpOrderNumber ?? t('noErpOrder')}
+                </Text>
+                <Text style={styles.orderMeta}>
+                  {t('vehicle')}: {order.vehicle ?? '—'}
+                </Text>
+              </View>
+            </AppCard>
+          ))
+        )}
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 };
 
-const KpiCard = ({
+const Kpi = ({
   title,
   value,
-  hint,
-  accent,
   icon,
+  tint,
   isRTL,
+  styles,
 }: {
   title: string;
   value: string;
-  hint: string;
-  accent: string;
-  icon: string;
+  icon: IonName;
+  tint: string;
   isRTL?: boolean;
+  styles: ReturnType<typeof createDashStyles>;
 }) => (
-  <View style={styles.kpi}>
+  <View style={[styles.kpi, Shadows.sm as object]}>
     <View style={[styles.kpiTop, isRTL && styles.rowReverse]}>
-      <Text style={[styles.kpiTitle, isRTL && styles.rtlText]}>{title}</Text>
-      <View style={[styles.kpiIcon, { backgroundColor: accent + '18' }]}>
-        <Text>{icon}</Text>
+      <View style={[styles.kpiIcon, { backgroundColor: tint + '18' }]}>
+        <Ionicons name={icon} size={14} color={tint} />
       </View>
     </View>
-    <Text style={[styles.kpiValue, { color: accent }, isRTL && styles.rtlText]}>{value}</Text>
-    <Text style={[styles.kpiHint, isRTL && styles.rtlText]}>{hint}</Text>
+    <Text style={[styles.kpiValue, { color: tint }, isRTL && styles.rtl]} numberOfLines={1}>
+      {value}
+    </Text>
+    <Text style={[styles.kpiTitle, isRTL && styles.rtl]} numberOfLines={2}>
+      {title}
+    </Text>
   </View>
 );
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
-  container: { padding: Spacing[4], paddingBottom: Spacing[8] },
-  banner: {
-    backgroundColor: Colors.primaryBanner,
-    borderRadius: BorderRadius.lg,
-    paddingVertical: Spacing[5],
-    paddingHorizontal: Spacing[4],
-    marginBottom: Spacing[4],
-  },
-  bannerTitle: { ...Typography.h5, color: Colors.white },
-  statsRow: { gap: Spacing[3], marginBottom: Spacing[4] },
-  kpi: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing[4],
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  kpiTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  kpiTitle: { ...Typography.label, color: Colors.textSecondary },
-  kpiIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  kpiValue: { ...Typography.h3, marginTop: Spacing[2] },
-  kpiHint: { ...Typography.caption, color: Colors.textSecondary, marginTop: 2 },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Spacing[3],
-  },
-  sectionTitle: { ...Typography.h5, color: Colors.textPrimary },
-  link: { ...Typography.label, color: Colors.primary },
-  tableCard: { padding: 0, overflow: 'hidden', marginBottom: Spacing[4] },
-  tableHead: {
-    flexDirection: 'row',
-    backgroundColor: Colors.gray100,
-    paddingHorizontal: Spacing[3],
-    paddingVertical: Spacing[3],
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  th: { ...Typography.caption, color: Colors.textSecondary, fontWeight: '700' },
-  tableRow: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing[3],
-    paddingVertical: Spacing[3],
-    alignItems: 'center',
-  },
-  orderBlock: {
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  ucicRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing[3],
-    paddingBottom: Spacing[3],
-    gap: Spacing[2],
-  },
-  ucicItem: { ...Typography.caption, color: Colors.textSecondary, flex: 1 },
-  colCoupon: { flex: 1.2 },
-  colStatus: { flex: 1, alignItems: 'flex-start' },
-  colArea: { flex: 1 },
-  coupon: { ...Typography.label, color: Colors.textPrimary },
-  meta: { ...Typography.caption, color: Colors.textSecondary, marginTop: 2 },
-  helpCard: { marginBottom: Spacing[4] },
-  helpTitle: { ...Typography.h5, color: Colors.textPrimary, marginBottom: Spacing[1] },
-  helpText: { ...Typography.body, color: Colors.textSecondary, marginBottom: Spacing[3] },
-  helpContact: { ...Typography.label, color: Colors.textPrimary, marginBottom: 2 },
-  helpBtn: {
-    marginTop: Spacing[4],
-    backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.md,
-    paddingVertical: Spacing[3],
-    alignItems: 'center',
-  },
-  helpBtnText: { ...Typography.button, color: Colors.white },
-  rowReverse: { flexDirection: 'row-reverse' },
-  rtlText: { textAlign: 'right', writingDirection: 'rtl' },
-});
+const createDashStyles = (c: AppColors) =>
+  StyleSheet.create({
+    container: { padding: Spacing[4] },
+    rtl: { textAlign: 'right', writingDirection: 'rtl' },
+    rowReverse: { flexDirection: 'row-reverse' },
+    welcome: {
+      backgroundColor: c.primaryDark,
+      borderRadius: BorderRadius.xl,
+      paddingVertical: Spacing[4],
+      paddingHorizontal: Spacing[4],
+      marginBottom: Spacing[3],
+      overflow: 'hidden',
+      ...(Shadows.md as object),
+    },
+    hello: { ...Typography.caption, color: 'rgba(255,255,255,0.75)', marginBottom: 4 },
+    name: {
+      ...Typography.h5,
+      color: c.white,
+      fontWeight: '700',
+      lineHeight: 24,
+      flexShrink: 1,
+    },
+    kpiGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing[2],
+      marginBottom: Spacing[4],
+    },
+    kpi: {
+      width: '48%',
+      flexGrow: 1,
+      maxWidth: '48.5%',
+      backgroundColor: c.surface,
+      borderRadius: BorderRadius.lg,
+      paddingVertical: Spacing[2],
+      paddingHorizontal: Spacing[3],
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.border,
+    },
+    kpiTop: { flexDirection: 'row', marginBottom: Spacing[1] },
+    kpiIcon: {
+      width: 28,
+      height: 28,
+      borderRadius: BorderRadius.sm,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    kpiValue: { ...Typography.h5, fontWeight: '700', marginBottom: 1 },
+    kpiTitle: { ...Typography.caption, color: c.textSecondary, fontSize: 11 },
+    sectionTitle: {
+      ...Typography.h5,
+      color: c.textPrimary,
+      marginBottom: Spacing[3],
+    },
+    sectionTitleInline: { ...Typography.h5, color: c.textPrimary },
+    quickRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: Spacing[5],
+      gap: Spacing[2],
+    },
+    quickBtn: { flex: 1, alignItems: 'center' },
+    quickIcon: {
+      width: 52,
+      height: 52,
+      borderRadius: BorderRadius.lg,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: Spacing[2],
+    },
+    quickLabel: { ...Typography.caption, color: c.textSecondary, fontWeight: '600' },
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: Spacing[3],
+    },
+    link: { ...Typography.label, color: c.primary },
+    orderCard: { marginBottom: Spacing[3] },
+    orderTop: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: Spacing[3],
+      marginBottom: Spacing[2],
+    },
+    coupon: { ...Typography.h5, color: c.textPrimary },
+    orderMeta: { ...Typography.caption, color: c.textSecondary, marginTop: 2 },
+    orderBottom: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: c.border,
+      paddingTop: Spacing[2],
+      marginTop: Spacing[1],
+    },
+  });
 
 export default DashboardScreen;
