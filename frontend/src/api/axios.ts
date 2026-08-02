@@ -4,6 +4,19 @@ import Config from '@config';
 import { StorageService } from '@services/storageService';
 import { STORAGE_KEYS } from '@constants';
 
+function clearReduxAuthSession() {
+  // Lazy require avoids circular import: axios ↔ store ↔ authApi
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { store } = require('../store') as typeof import('../store');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { clearAuth } = require('../store/slices/authSlice') as typeof import('../store/slices/authSlice');
+    store.dispatch(clearAuth());
+  } catch {
+    // ignore if store not ready
+  }
+}
+
 const apiClient: AxiosInstance = axios.create({
   baseURL: Config.API_BASE_URL,
   timeout: Config.API_TIMEOUT,
@@ -70,6 +83,7 @@ apiClient.interceptors.response.use(
         STORAGE_KEYS.REFRESH_TOKEN,
         STORAGE_KEYS.USER,
       ]);
+      clearReduxAuthSession();
     }
 
     return Promise.reject(error);

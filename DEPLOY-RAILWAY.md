@@ -3,10 +3,9 @@
 Railway new accounts often get **trial credits**. After credits end you may need a small paid plan.
 This uses the same Docker + Postgres setup already in the repo.
 
-> **Status (2026-07-24):** Railway account trial **expired**.  
-> New services / deploys fail until you activate **Hobby** (or higher) at https://railway.app  
-> Until then use **Cloudflare Tunnel** ([DEPLOY-TUNNEL.md](./DEPLOY-TUNNEL.md)) for Norway demo,  
-> or one-click **Render Blueprint**: [render.yaml](./render.yaml) → https://dashboard.render.com/select-repo?type=blueprint
+> **Status (2026-08-02):** Railway **Online** + public domain live:  
+> `https://dealer-management-app-production.up.railway.app` (swagger + login verified).  
+> App `EXPO_PUBLIC_API_URL` points here — Norway no longer needs Cloudflare tunnel.
 
 ---
 

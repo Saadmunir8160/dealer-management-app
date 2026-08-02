@@ -18,10 +18,10 @@ import { Colors, Typography, Spacing, BorderRadius } from '@theme';
 interface Props {
   visible: boolean;
   products: Product[];
-  /** Already selected product (single-select highlight) */
+  /** Already selected product (highlight only) */
   initialSelectedId?: number;
   onClose: () => void;
-  /** Called with the chosen product id when Done is pressed */
+  /** Called immediately when a row is tapped */
   onDone: (productId: number) => void;
 }
 
@@ -51,8 +51,13 @@ const ProductPickerModal: React.FC<Props> = ({
     });
   }, [products, query]);
 
+  const pick = (productId: number) => {
+    setSelectedId(productId);
+    onDone(productId);
+  };
+
   const dialogWidth = Math.min(width - 32, 640);
-  const listMaxHeight = Math.min(height * 0.5, 420);
+  const listMaxHeight = Math.min(height * 0.55, 460);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -106,7 +111,7 @@ const ProductPickerModal: React.FC<Props> = ({
                   return (
                     <TouchableOpacity
                       style={[styles.row, on && styles.rowOn]}
-                      onPress={() => setSelectedId(item.productId)}
+                      onPress={() => pick(item.productId)}
                       activeOpacity={0.75}
                     >
                       <Text style={[styles.name, styles.colName]} numberOfLines={2}>
@@ -121,14 +126,6 @@ const ProductPickerModal: React.FC<Props> = ({
               <View style={styles.footer}>
                 <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
                   <Text style={styles.cancelText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.doneBtn, !selectedId && styles.doneBtnDisabled]}
-                  onPress={() => selectedId && onDone(selectedId)}
-                  disabled={!selectedId}
-                >
-                  <Ionicons name="checkmark" size={18} color={Colors.white} />
-                  <Text style={styles.doneText}>Done</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -229,7 +226,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    gap: Spacing[3],
     marginTop: Spacing[4],
   },
   cancelBtn: {
@@ -243,21 +239,6 @@ const styles = StyleSheet.create({
   cancelText: {
     ...Typography.button,
     color: Colors.textPrimary,
-    fontSize: 14,
-  },
-  doneBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: Spacing[2],
-    paddingHorizontal: Spacing[4],
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.primary,
-  },
-  doneBtnDisabled: { opacity: 0.45 },
-  doneText: {
-    ...Typography.button,
-    color: Colors.white,
     fontSize: 14,
   },
 });

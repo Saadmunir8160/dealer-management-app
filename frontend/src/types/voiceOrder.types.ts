@@ -23,6 +23,8 @@ export interface GeminiOrderExtraction {
   delivery_date: string;
   delivery_area: string;
   notes: string;
+  /** Coupon / order reference e.g. ORD-111 */
+  coupon_number?: string;
   confidence: number;
   needs_confirmation: boolean;
   missing_fields: string[];
@@ -67,6 +69,8 @@ export interface VoiceOrderFillResult {
   deliveryDate: string | null;
   deliveryArea: string | null;
   notes: string | null;
+  /** Coupon / order ref from voice e.g. ORD-111 */
+  couponNumber: string | null;
   urgency: string | null;
   confidence: FieldConfidence;
   needsConfirmation: boolean;

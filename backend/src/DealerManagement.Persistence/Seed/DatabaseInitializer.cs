@@ -4,6 +4,7 @@ using DealerManagement.Domain.Entities.Product;
 using DealerManagement.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
 
 namespace DealerManagement.Persistence.Seed;
 
@@ -32,6 +33,72 @@ public static class DatabaseInitializer
         await EnsureOrderUcicColumnsAsync(db, logger, isPostgres, ct);
         await EnsureAdminAsync(db, logger, ct);
         await EnsureCatalogAsync(db, logger, ct);
+        await EnsureUcIcDemoDealerAsync(db, logger, ct);
+    }
+
+    /// <summary>
+    /// UCIC Customer Information demo dealer (LN 1087) — upsert so Profile is never empty for admin.
+    /// </summary>
+    private static async Task EnsureUcIcDemoDealerAsync(AppDbContext db, ILogger logger, CancellationToken ct)
+    {
+        const string code = "1087";
+        var existing = await db.Dealers.FirstOrDefaultAsync(d => d.DealerCode == code, ct);
+
+        if (existing == null)
+        {
+            var dealer = new Dealer
+            {
+                DealerCode = code,
+                DealerName = "شركة مشيد للتجارة",
+                ContactPerson = "شركة مشيد للتجارة والنقل شركة مشيد",
+                Phone = "009660138870114",
+                Mobile = "009660138870114",
+                Email = "Amar.abuzaid@saudireadymix.com.sa",
+                DealerType = DealerType.Authorized,
+                Status = DealerStatus.Active,
+                CreditLimit = 0,
+                PaymentTermsDays = 30,
+                IsActive = true,
+                Notes = "UCIC demo — FullName: شركة مشيد للتجارة والنقل شركة مشيد"
+            };
+
+            dealer.Addresses.Add(new DealerAddress
+            {
+                AddressType = AddressType.Shipping,
+                AddressLine1 = "Saudi Arabia",
+                City = "Dammam",
+                Country = "Saudi Arabia",
+                IsDefault = true,
+                IsActive = true
+            });
+
+            dealer.Contacts.Add(new DealerContact
+            {
+                ContactName = "Amar Abuzaid",
+                Email = "Amar.abuzaid@saudireadymix.com.sa",
+                Phone = "009660138870114",
+                Mobile = "009660138870114",
+                IsPrimary = true,
+                IsActive = true
+            });
+
+            db.Dealers.Add(dealer);
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("Seeded UCIC demo dealer LN {Code}", code);
+            return;
+        }
+
+        existing.DealerName = "شركة مشيد للتجارة";
+        existing.ContactPerson = "شركة مشيد للتجارة والنقل شركة مشيد";
+        existing.Phone = "009660138870114";
+        existing.Mobile = "009660138870114";
+        existing.Email = "Amar.abuzaid@saudireadymix.com.sa";
+        existing.CreditLimit = 0;
+        existing.Status = DealerStatus.Active;
+        existing.IsActive = true;
+        existing.Notes = "UCIC demo — FullName: شركة مشيد للتجارة والنقل شركة مشيد";
+        await db.SaveChangesAsync(ct);
+        logger.LogInformation("Ensured UCIC demo dealer LN {Code}", code);
     }
 
     /// <summary>
@@ -96,41 +163,7 @@ public static class DatabaseInitializer
         var categoryId = await db.Categories.Select(c => c.Id).FirstAsync(ct);
         var brandId = await db.Brands.Select(b => b.Id).FirstAsync(ct);
 
-        if (!await db.Products.AnyAsync(ct))
-        {
-            var products = new (string Code, string Name, string Sku, decimal Price)[]
-            {
-                ("PRD-CEM", "Cement Bag", "CB001", 1200m),
-                ("PRD-STL", "Steel Rod", "SR001", 2500m),
-                ("PRD-BRK", "Bricks", "BR001", 18m),
-                ("PRD-SND", "Sand (per cubic ft)", "SD001", 150m),
-                ("PRD-GRV", "Gravel (per cubic ft)", "GR001", 200m),
-                ("PRD-PNT", "Paint (20L)", "PT001", 3500m),
-                ("PRD-PVC", "PVC Pipe (per meter)", "PV001", 450m),
-            };
-
-            foreach (var p in products)
-            {
-                db.Products.Add(new Product
-                {
-                    ProductCode = p.Code,
-                    ProductName = p.Name,
-                    SKU = p.Sku,
-                    UnitPrice = p.Price,
-                    CostPrice = Math.Round(p.Price * 0.7m, 2),
-                    CategoryId = categoryId,
-                    BrandId = brandId,
-                    UnitOfMeasure = "Unit",
-                    TaxRate = 0,
-                    MinOrderQuantity = 1,
-                    MaxOrderQuantity = 100000,
-                    IsActive = true
-                });
-            }
-
-            await db.SaveChangesAsync(ct);
-            logger.LogInformation("Seeded {Count} products", products.Length);
-        }
+        await EnsureUcIcProductsAsync(db, logger, categoryId, brandId, ct);
 
         if (!await db.Dealers.AnyAsync(ct))
         {
@@ -274,5 +307,98 @@ public static class DatabaseInitializer
                 logger.LogInformation("Reset admin password to Admin@123");
             }
         }
+    }
+
+    /// <summary>
+    /// UCIC "Please Select Item Code" catalog — replace demo PRD products with portal LN list.
+    /// </summary>
+    private static async Task EnsureUcIcProductsAsync(
+        AppDbContext db,
+        ILogger logger,
+        int categoryId,
+        int brandId,
+        CancellationToken ct)
+    {
+        // Exact UCIC portal list (Product Name + LN Code)
+        var catalog = new (string Code, string Name, string Uom, decimal Price)[]
+        {
+            ("5719", "SCRAP-Switch Breaker القواطع", "Unit", 100m),
+            ("5501", "5501", "TONS", 280m),
+            ("5505", "5505 - MCT Bulk (Masonery Cement - Tameer)", "TONS", 290m),
+            ("5601", "5601 - OPC Bags (إسمنت بورتلاندي عادي - مكيس)", "BAGS", 18m),
+            ("5602", "5602 - SRC Bags (أسمنت مكيس مقاوم للكبريتات)", "BAGS", 19m),
+            ("5603", "5603 - PPC Bags (إسمنت بورتلاندي بوزولاني - مكيس)", "BAGS", 17m),
+            ("5604", "5604 - MCT Bags (إسمنت التشطيب - مكيس تعمير)", "BAGS", 20m),
+            ("5703", "5703 - SCRAP-MIXED STEEL - حديد مشكل", "Unit", 150m),
+            ("5828", "ttnew", "BAGS", 10m),
+            ("0021", "new test", "BAGS", 10m),
+            ("5557", "ttnew1", "BAGS", 10m),
+            ("55", "ttnew1", "BAGS", 10m),
+        };
+
+        var keepCodes = new HashSet<string>(
+            catalog.Select(c => c.Code),
+            StringComparer.OrdinalIgnoreCase);
+
+        var existing = await db.Products.IgnoreQueryFilters().ToListAsync(ct);
+        var added = 0;
+        var updated = 0;
+
+        foreach (var item in catalog)
+        {
+            var row = existing.FirstOrDefault(p =>
+                string.Equals(p.ProductCode, item.Code, StringComparison.OrdinalIgnoreCase));
+
+            if (row == null)
+            {
+                db.Products.Add(new Product
+                {
+                    ProductCode = item.Code,
+                    ProductName = item.Name,
+                    SKU = item.Code,
+                    Description = "UCIC item code",
+                    UnitPrice = item.Price,
+                    CostPrice = Math.Round(item.Price * 0.7m, 2),
+                    CategoryId = categoryId,
+                    BrandId = brandId,
+                    UnitOfMeasure = item.Uom,
+                    TaxRate = 0,
+                    MinOrderQuantity = 1,
+                    MaxOrderQuantity = 100000,
+                    IsActive = true,
+                    IsDeleted = false
+                });
+                added++;
+            }
+            else
+            {
+                row.ProductName = item.Name;
+                row.SKU = item.Code;
+                row.UnitOfMeasure = item.Uom;
+                row.UnitPrice = item.Price;
+                row.CostPrice = Math.Round(item.Price * 0.7m, 2);
+                row.CategoryId = categoryId;
+                row.BrandId = brandId;
+                row.IsActive = true;
+                row.IsDeleted = false;
+                updated++;
+            }
+        }
+
+        // Hide old demo catalog (Cement Bag / PRD-* / 5801…) from picker
+        var deactivated = 0;
+        foreach (var p in existing)
+        {
+            if (keepCodes.Contains(p.ProductCode)) continue;
+            if (!p.IsActive && p.IsDeleted) continue;
+            p.IsActive = false;
+            p.IsDeleted = true;
+            deactivated++;
+        }
+
+        await db.SaveChangesAsync(ct);
+        logger.LogInformation(
+            "UCIC products ensured: added={Added}, updated={Updated}, deactivated={Deactivated}",
+            added, updated, deactivated);
     }
 }

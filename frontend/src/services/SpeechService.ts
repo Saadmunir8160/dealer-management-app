@@ -1,10 +1,11 @@
+/**
+ * Thin Speech helpers used by voice UI (permissions / support checks).
+ * Actual listen loop lives in useSpeechRecognition
+ * (Web Speech API + expo-speech-recognition on native).
+ */
 import { Platform } from 'react-native';
 import { normalizeVoiceTranscript } from '@hooks/useSpeechRecognition';
 
-/**
- * Thin Speech helpers used by voice UI (permissions / support checks).
- * Actual listen loop lives in useSpeechRecognition (Web Speech + @react-native-voice/voice).
- */
 export const SpeechService = {
   normalize: normalizeVoiceTranscript,
 
@@ -34,8 +35,20 @@ export const SpeechService = {
       }
     }
 
-    // Native: @react-native-voice triggers OS permission on startListening.
-    return { ok: true };
+    try {
+      const { ExpoSpeechRecognitionModule } = await import('expo-speech-recognition');
+      const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      if (!result?.granted) {
+        return {
+          ok: false,
+          message: 'Microphone / speech permission denied. Enable in phone settings.',
+        };
+      }
+      return { ok: true };
+    } catch {
+      // Module not linked yet — startListening will surface a clearer error
+      return { ok: true };
+    }
   },
 };
 

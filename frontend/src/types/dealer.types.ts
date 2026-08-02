@@ -23,11 +23,15 @@
 export interface Dealer {
   dealerId: number;              // INT IDENTITY — primary key
   dealerName: string;            // NVARCHAR(150) — business name
+  /** LN / dealer code from API DealerCode */
+  dealerCode?: string | null;
   contactPerson: string | null;  // NVARCHAR(100) — contact name
   phone: string | null;          // NVARCHAR(20)
   email: string | null;          // NVARCHAR(150)
   address: string | null;        // NVARCHAR(300) — full street address
   city: string | null;           // NVARCHAR(100)
+  /** Credit limit from API (shown as Available Credit on profile) */
+  creditLimit?: number;
   status: boolean;               // BIT — true = active, false = inactive
   createdDate: string;           // DATETIME as ISO string
 }

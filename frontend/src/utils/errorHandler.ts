@@ -10,6 +10,23 @@ export const parseApiError = (error: unknown): ApiError => {
     const data = error.response?.data;
     let message = 'An unexpected error occurred.';
     const status = error.response?.status ?? 0;
+    const code = error.code ?? '';
+
+    // No response = network / tunnel / timeout (common for overseas clients).
+    if (!error.response) {
+      if (code === 'ECONNABORTED' || /timeout/i.test(error.message || '')) {
+        return {
+          message:
+            'Server is slow or unreachable. Check internet and try again in a moment.',
+          statusCode: 0,
+        };
+      }
+      return {
+        message:
+          'Cannot reach server. Check internet connection and try again.',
+        statusCode: 0,
+      };
+    }
 
     if (typeof data === 'string' && data.trim()) {
       message = data

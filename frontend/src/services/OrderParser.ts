@@ -12,9 +12,7 @@ import { bestFuzzyMatch, fuzzyRank } from '@utils/fuzzyMatch';
 import { isValidIsoDate, parseDeliveryDate, toIsoDate } from '@utils/dateParser';
 import { isValidOrderUnit, sanitizeTranscript } from '@utils/jsonValidator';
 import { getProductUnit } from '@utils/productUnit';
-import { localVoiceExtract } from '@utils/localVoiceExtract';
-
-const CONFIRM_THRESHOLD = 90;
+import { localVoiceExtract, looksLikeCompactVoiceOrder } from '@utils/localVoiceExtract';
 
 function unitFromProduct(product: Product, spoken?: string): VoiceOrderUnit {
   const fromSpoken = (spoken || '').toLowerCase();
@@ -164,6 +162,15 @@ function resolveProducts(
       : undefined;
 
     if (!match && row.name) {
+      const codeWant = String(row.name).trim().toUpperCase();
+      match = catalog.find(
+        p =>
+          (p.code || '').toUpperCase() === codeWant ||
+          (p.sku || '').toUpperCase() === codeWant,
+      );
+    }
+
+    if (!match && row.name) {
       const ranked = fuzzyRank(
         row.name,
         catalog,
@@ -217,7 +224,14 @@ function resolveProducts(
     });
   });
 
-  if (!items.length) warnings.push('No products matched â€” select items manually.');
+  if (!items.length) {
+    const spoken = extraction.products.map(p => p.name).filter(Boolean).join(', ');
+    warnings.push(
+      spoken
+        ? `No products matched "${spoken}" — select items manually.`
+        : 'No products matched — select items manually.',
+    );
+  }
   return { items, itemAmbiguities, warnings };
 }
 
@@ -313,11 +327,11 @@ function fromLocalFallback(
     const p = products.find(x => x.productId === i.productId);
     return {
       productId: i.productId,
-      productName: p?.productName || 'â€”',
+      productName: p?.productName || '—',
       quantity: i.quantity,
       unitPrice: i.unitPrice,
-      unit: p ? unitFromProduct(p) : 'pcs',
-      confidence: 75,
+      unit: p ? unitFromProduct(p) : 'bags',
+      confidence: 95,
     };
   });
 
@@ -325,12 +339,24 @@ function fromLocalFallback(
     ? parseDeliveryDate(local.deliveryDate)
     : null;
 
+  const couponNumber = local.couponNumber || null;
+
+  // LN / bags / coupon orders do not need a spoken customer — pick first active dealer
+  if (!dealerId && items.length > 0) {
+    const fallback = dealers.find(d => d.status !== false);
+    if (fallback) {
+      dealerId = fallback.dealerId;
+      customerName = fallback.dealerName;
+      customerConfidence = 100;
+    }
+  }
+
   const confidence = buildConfidence({
-    customer: customerConfidence,
+    customer: customerConfidence || (items.length ? 100 : 0),
     products: items.map(i => i.confidence),
-    quantity: items.every(i => i.quantity > 0) ? 90 : 40,
-    date: deliveryDate ? 85 : 0,
-    area: local.address ? 70 : 0,
+    quantity: items.every(i => i.quantity === 500 || i.quantity === 600) ? 100 : 70,
+    date: deliveryDate ? 85 : items.length ? 100 : 0,
+    area: local.address ? 70 : items.length ? 100 : 0,
   });
 
   return {
@@ -343,15 +369,16 @@ function fromLocalFallback(
     deliveryDate,
     deliveryArea: local.address || null,
     notes: null,
+    couponNumber,
     urgency: null,
     confidence,
-    needsConfirmation: confidence.overall < CONFIRM_THRESHOLD || customerCandidates.length > 0,
+    // Only block on missing product/coupon — not missing spoken customer
+    needsConfirmation: !items.length || !couponNumber || customerCandidates.length > 0,
     missingFields: [
-      !dealerId ? 'customer' : '',
-      !items.length ? 'products' : '',
-      !deliveryDate ? 'delivery_date' : '',
+      !items.length ? 'product' : '',
+      !couponNumber ? 'coupon_number' : '',
     ].filter(Boolean),
-    warnings,
+    warnings: warnings.filter(w => !/customer not found/i.test(w)),
     engine: 'local',
     raw: null,
   };
@@ -383,37 +410,51 @@ function finalize(
   }
 
   const qtyOk = prod.items.length > 0 && prod.items.every(i => i.quantity > 0);
-  const confidence = buildConfidence({
-    customer: cust.customerConfidence,
-    products: prod.items.map(i => i.confidence),
-    quantity: qtyOk ? 100 : 40,
-    date: date ? 94 : 0,
-    area: areaRes.confidence,
-  });
 
-  const needsConfirmation =
-    extraction.needs_confirmation ||
-    confidence.overall < CONFIRM_THRESHOLD ||
-    cust.customerCandidates.length > 0 ||
-    prod.itemAmbiguities.length > 0 ||
-    !cust.dealerId ||
-    !prod.items.length;
+  const couponNumber = (extraction.coupon_number || '').trim() || null;
+  if (!couponNumber) {
+    warnings.push('Coupon missing — enter coupon, then Place Order.');
+  }
+
+  // Compact LN orders: auto-pick first active dealer when AI did not resolve customer
+  let dealerId = cust.dealerId;
+  let customerName = cust.customerName;
+  let customerConfidence = cust.customerConfidence;
+  if (!dealerId && prod.items.length > 0) {
+    const fallback = dealers.find(d => d.status !== false);
+    if (fallback) {
+      dealerId = fallback.dealerId;
+      customerName = fallback.dealerName;
+      customerConfidence = 100;
+    }
+  }
 
   return {
-    dealerId: cust.dealerId,
-    customerName: cust.customerName,
-    customerConfidence: cust.customerConfidence,
+    dealerId,
+    customerName,
+    customerConfidence,
     customerCandidates: cust.customerCandidates,
     items: prod.items,
     itemAmbiguities: prod.itemAmbiguities,
     deliveryDate: date,
     deliveryArea: areaRes.area,
     notes: extraction.notes || null,
+    couponNumber,
     urgency: extraction.urgency || null,
-    confidence,
-    needsConfirmation,
+    confidence: buildConfidence({
+      customer: customerConfidence,
+      products: prod.items.map(i => i.confidence),
+      quantity: qtyOk ? 100 : 40,
+      date: date ? 94 : prod.items.length ? 100 : 0,
+      area: areaRes.confidence || (prod.items.length ? 100 : 0),
+    }),
+    needsConfirmation:
+      !prod.items.length ||
+      !couponNumber ||
+      cust.customerCandidates.length > 0 ||
+      prod.itemAmbiguities.length > 0,
     missingFields: extraction.missing_fields,
-    warnings,
+    warnings: warnings.filter(w => !/customer not found/i.test(w)),
     engine,
     raw: extraction,
   };
@@ -447,8 +488,16 @@ export const OrderParser = {
         ),
       );
 
-    if (params.preferLocal || !GeminiService.isConfigured()) {
-      return fromLocalFallback(transcript, params.dealers, params.products);
+    // Always prefer local LN parse against Please Select Item Code list
+    const localQuick = fromLocalFallback(transcript, params.dealers, params.products);
+    const useLocal =
+      localQuick.items.length > 0 ||
+      looksLikeCompactVoiceOrder(transcript, params.products) ||
+      params.preferLocal !== false ||
+      !GeminiService.isConfigured();
+
+    if (useLocal) {
+      return localQuick;
     }
 
     try {
@@ -457,9 +506,8 @@ export const OrderParser = {
       return finalize(extraction, params.dealers, params.products, areas, engine);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'AI extract failed';
-      // Soft fallback so voice still works without Gemini / on network errors
       const local = fromLocalFallback(transcript, params.dealers, params.products);
-      local.warnings = [`AI unavailable (${message}) â€” used offline extract.`, ...local.warnings];
+      local.warnings = [`AI unavailable (${message}) — used offline extract.`, ...local.warnings];
       local.needsConfirmation = true;
       return local;
     }

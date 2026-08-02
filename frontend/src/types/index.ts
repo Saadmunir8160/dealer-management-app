@@ -20,6 +20,7 @@ export * from './report.types';
 export * from './support.types';
 export * from './api.types';
 export * from './navigation.types';
-export * from './common.types';
+export type { SelectOption, TableColumn, LoadingState, ListAsyncState } from './common.types';
 export * from './voice.types';
 export * from './voiceOrder.types';
+

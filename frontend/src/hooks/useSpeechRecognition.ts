@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { NativeModules, Platform } from 'react-native';
+import { Platform } from 'react-native';
 
 type SpeechRecognitionLike = {
   continuous: boolean;
@@ -70,7 +70,6 @@ export function normalizeVoiceTranscript(raw: string): string {
   let t = normalizeDigits((raw || '').trim());
   t = t.replace(/[.,!?]+$/g, '');
   t = t.replace(/\s+/g, ' ');
-  // Common mis-hears → catalog vocabulary (do NOT map paint→rod etc.)
   const fixes: [RegExp, string][] = [
     [/\b(rode|road|roads|rods)\b/gi, 'rod'],
     [/\b(steel rod|steel rods|metal rod)\b/gi, 'steel rod'],
@@ -94,9 +93,11 @@ function friendlySpeechError(code: string): string {
       return '';
     case 'not-allowed':
     case 'service-not-allowed':
-      return 'Microphone permission denied. Allow mic in browser settings.';
+      return 'Microphone permission denied. Allow mic in app settings.';
     case 'audio-capture':
       return 'No microphone found.';
+    case 'language-not-supported':
+      return 'Speech language not supported on this device.';
     default:
       return code ? `Speech error: ${code}` : '';
   }
@@ -115,6 +116,10 @@ export interface UseSpeechRecognitionResult {
   resetTranscript: () => void;
 }
 
+/**
+ * Web: browser SpeechRecognition.
+ * Native (Android/iOS): expo-speech-recognition TurboModule (New Architecture safe).
+ */
 export function useSpeechRecognition(initialLang?: string): UseSpeechRecognitionResult {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -124,13 +129,14 @@ export function useSpeechRecognition(initialLang?: string): UseSpeechRecognition
     () => initialLang || resolveDefaultSpeechLang(),
   );
   const webRef = useRef<SpeechRecognitionLike | null>(null);
-  const nativeVoiceRef = useRef<any>(null);
   const finalLock = useRef(false);
   const languageRef = useRef(language);
   const networkRetryRef = useRef(0);
   const interimRef = useRef('');
   const listenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intentionalStop = useRef(false);
+  const nativeSubsRef = useRef<{ remove: () => void }[]>([]);
+  const nativeReadyRef = useRef(false);
 
   useEffect(() => {
     languageRef.current = language;
@@ -152,52 +158,109 @@ export function useSpeechRecognition(initialLang?: string): UseSpeechRecognition
     }
   };
 
+  const commitText = useCallback((text: string) => {
+    const cleaned = normalizeVoiceTranscript(text);
+    if (!cleaned || finalLock.current) return;
+    finalLock.current = true;
+    networkRetryRef.current = 0;
+    setTranscript(cleaned);
+    setPartialTranscript('');
+    setError(null);
+  }, []);
+
+  // Wire expo-speech-recognition listeners once on native
   useEffect(() => {
     if (isWeb) return;
 
     let cancelled = false;
+    const subs: { remove: () => void }[] = [];
+
     (async () => {
       try {
-        // Old-bridge package: if New Architecture left NativeModules.Voice null,
-        // importing still succeeds but startSpeech crashes.
-        if (!NativeModules.Voice) {
-          if (!cancelled) {
-            setNativeSupported(false);
-            setError(
-              'Voice native module missing. Rebuild the app with New Architecture disabled.',
-            );
-          }
+        const {
+          ExpoSpeechRecognitionModule,
+        } = await import('expo-speech-recognition');
+
+        if (cancelled) return;
+
+        if (
+          !ExpoSpeechRecognitionModule ||
+          typeof ExpoSpeechRecognitionModule.start !== 'function'
+        ) {
+          setNativeSupported(false);
+          setError('Voice module missing. Rebuild the app.');
           return;
         }
-        const Voice = (await import('@react-native-voice/voice')).default;
-        if (cancelled) return;
-        nativeVoiceRef.current = Voice;
-        Voice.onSpeechResults = (e: { value?: string[] }) => {
-          const text = normalizeVoiceTranscript(e.value?.[0] ?? '');
-          if (text && !finalLock.current) {
-            finalLock.current = true;
-            setTranscript(text);
-            setPartialTranscript('');
-          }
-        };
-        Voice.onSpeechPartialResults = (e: { value?: string[] }) => {
-          if (!finalLock.current) {
-            interimRef.current = e.value?.[0] ?? '';
-            setPartialTranscript(interimRef.current);
-          }
-        };
-        Voice.onSpeechError = (e: { error?: { message?: string; code?: string } }) => {
-          const msg = e.error?.message ?? e.error?.code ?? '';
-          const friendly = friendlySpeechError(String(msg));
-          if (friendly) setError(friendly);
-          setIsListening(false);
-        };
-        Voice.onSpeechEnd = () => setIsListening(false);
-        setNativeSupported(true);
-      } catch {
-        if (!cancelled) {
+
+        const available =
+          typeof ExpoSpeechRecognitionModule.isRecognitionAvailable === 'function'
+            ? ExpoSpeechRecognitionModule.isRecognitionAvailable()
+            : true;
+
+        if (!available) {
           setNativeSupported(false);
-          setError('Voice module not available. Use Chrome web or a native build.');
+          setError(
+            'Speech recognition not available. Install Google app / enable Dictation.',
+          );
+          return;
+        }
+
+        subs.push(
+          ExpoSpeechRecognitionModule.addListener('result', (event: any) => {
+            const results = event?.results ?? [];
+            const top = String(results[0]?.transcript ?? '').trim();
+            if (!top || finalLock.current) return;
+
+            const isFinal = Boolean(event?.isFinal ?? results[0]?.isFinal);
+            interimRef.current = top;
+            setPartialTranscript(top);
+
+            // Continuous sessions: keep updating until stop; commit on final chunks
+            if (isFinal && top.length >= 2) {
+              interimRef.current = top;
+              setPartialTranscript(top);
+            }
+          }),
+        );
+
+        subs.push(
+          ExpoSpeechRecognitionModule.addListener('error', (event: any) => {
+            const code = String(event?.error ?? event?.code ?? '');
+            if (intentionalStop.current) return;
+            const msg = friendlySpeechError(code) || String(event?.message ?? '');
+            if (msg) setError(msg);
+            setIsListening(false);
+            clearListenTimer();
+          }),
+        );
+
+        subs.push(
+          ExpoSpeechRecognitionModule.addListener('end', () => {
+            clearListenTimer();
+            if (!finalLock.current && interimRef.current.trim()) {
+              commitText(interimRef.current);
+            }
+            setIsListening(false);
+          }),
+        );
+
+        subs.push(
+          ExpoSpeechRecognitionModule.addListener('start', () => {
+            setIsListening(true);
+          }),
+        );
+
+        nativeSubsRef.current = subs;
+        nativeReadyRef.current = true;
+        setNativeSupported(true);
+      } catch (e: any) {
+        if (!cancelled) {
+          nativeReadyRef.current = false;
+          setNativeSupported(false);
+          setError(
+            e?.message ||
+              'Voice module not available. Install a fresh APK with speech support.',
+          );
         }
       }
     })();
@@ -205,12 +268,26 @@ export function useSpeechRecognition(initialLang?: string): UseSpeechRecognition
     return () => {
       cancelled = true;
       clearListenTimer();
-      const Voice = nativeVoiceRef.current;
-      if (Voice) {
-        Voice.destroy?.().then(() => Voice.removeAllListeners?.());
-      }
+      nativeReadyRef.current = false;
+      nativeSubsRef.current.forEach(s => {
+        try {
+          s.remove();
+        } catch {
+          // ignore
+        }
+      });
+      nativeSubsRef.current = [];
+      void import('expo-speech-recognition')
+        .then(({ ExpoSpeechRecognitionModule }) => {
+          try {
+            ExpoSpeechRecognitionModule.abort?.();
+          } catch {
+            // ignore
+          }
+        })
+        .catch(() => undefined);
     };
-  }, [isWeb]);
+  }, [isWeb, commitText]);
 
   const isSupported = isWeb ? webSupported : nativeSupported;
 
@@ -219,16 +296,6 @@ export function useSpeechRecognition(initialLang?: string): UseSpeechRecognition
     networkRetryRef.current = 0;
     interimRef.current = '';
     setTranscript('');
-    setPartialTranscript('');
-    setError(null);
-  }, []);
-
-  const commitText = useCallback((text: string) => {
-    const cleaned = normalizeVoiceTranscript(text);
-    if (!cleaned || finalLock.current) return;
-    finalLock.current = true;
-    networkRetryRef.current = 0;
-    setTranscript(cleaned);
     setPartialTranscript('');
     setError(null);
   }, []);
@@ -244,7 +311,6 @@ export function useSpeechRecognition(initialLang?: string): UseSpeechRecognition
         intentionalStop.current = false;
         webRef.current?.abort?.();
         const recognition = new Ctor();
-        // Continuous + long window = better far / slow speech capture
         recognition.continuous = true;
         recognition.interimResults = true;
         recognition.maxAlternatives = 5;
@@ -274,31 +340,21 @@ export function useSpeechRecognition(initialLang?: string): UseSpeechRecognition
             interimRef.current = interim || bestAlt;
             setPartialTranscript(interimRef.current);
           }
-          // Prefer a solid final phrase; continuous may emit multiple finals
           if (finalText && !finalLock.current) {
-            const phrase = finalText.trim() || bestAlt;
-            // If phrase looks like an order command, commit early
-            if (/\b(add|create|order|need|want|update|delete|confirm|cancel|\d)\b/i.test(phrase)) {
-              commitText(phrase);
-              intentionalStop.current = true;
-              clearListenTimer();
-              try {
-                recognition.stop();
-              } catch {
-                // ignore
-              }
-            } else {
-              interimRef.current = phrase;
-              setPartialTranscript(phrase);
-            }
+            const piece = finalText.trim() || bestAlt;
+            const merged = [interimRef.current, piece]
+              .filter(Boolean)
+              .join(' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+            interimRef.current = merged;
+            setPartialTranscript(merged);
           }
         };
 
         recognition.onerror = (event: any) => {
           const code = String(event?.error ?? '');
-          if (code === 'aborted' || code === 'no-speech') {
-            return;
-          }
+          if (code === 'aborted' || code === 'no-speech') return;
           if (code === 'network') {
             if (networkRetryRef.current < 3 && !finalLock.current) {
               networkRetryRef.current += 1;
@@ -312,7 +368,6 @@ export function useSpeechRecognition(initialLang?: string): UseSpeechRecognition
 
         recognition.onend = () => {
           clearListenTimer();
-          // Promote best interim if no final was locked (far speech often ends this way)
           if (!finalLock.current && interimRef.current.trim()) {
             commitText(interimRef.current);
           }
@@ -356,22 +411,42 @@ export function useSpeechRecognition(initialLang?: string): UseSpeechRecognition
       return;
     }
 
-    const Voice = nativeVoiceRef.current;
-    if (!Voice || !NativeModules.Voice) {
-      setError(
-        'Native voice module not loaded. Install a fresh APK (New Architecture off).',
-      );
-      return;
-    }
     try {
-      await Voice.start(lang);
+      const { ExpoSpeechRecognitionModule } = await import('expo-speech-recognition');
+
+      const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      if (!perm?.granted) {
+        setError('Microphone / speech permission denied. Enable in phone settings.');
+        return;
+      }
+
+      ExpoSpeechRecognitionModule.start({
+        lang,
+        interimResults: true,
+        continuous: true,
+        // Android: web_search model is more reliable for short codes / LN numbers
+        androidIntentOptions: {
+          EXTRA_LANGUAGE_MODEL: 'web_search',
+        },
+      });
+
       setIsListening(true);
       clearListenTimer();
       listenTimerRef.current = setTimeout(() => {
-        void Voice.stop?.();
+        intentionalStop.current = true;
+        try {
+          ExpoSpeechRecognitionModule.stop();
+        } catch {
+          // ignore
+        }
       }, LISTEN_MS);
     } catch (e: any) {
-      setError(e?.message ?? 'Failed to start voice recognition');
+      const msg = String(e?.message ?? e ?? '');
+      if (/startSpeech|of null/i.test(msg)) {
+        setError('Voice native module failed. Reinstall the latest APK.');
+      } else {
+        setError(msg || 'Failed to start voice recognition');
+      }
       setIsListening(false);
     }
   }, [isWeb, startWebRecognition]);
@@ -392,9 +467,13 @@ export function useSpeechRecognition(initialLang?: string): UseSpeechRecognition
       return;
     }
     try {
-      await nativeVoiceRef.current?.stop?.();
+      const { ExpoSpeechRecognitionModule } = await import('expo-speech-recognition');
+      ExpoSpeechRecognitionModule.stop();
     } catch {
       // ignore
+    }
+    if (!finalLock.current && interimRef.current.trim()) {
+      commitText(interimRef.current);
     }
     setIsListening(false);
   }, [isWeb, commitText]);

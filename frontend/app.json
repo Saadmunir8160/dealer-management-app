@@ -1,14 +1,15 @@
 {
   "expo": {
     "name": "UCIC Customer Portal",
-    "slug": "ucic-customer-portal",
-    "version": "1.0.9",
+    "slug": "yahyakhan",
+    "version": "1.0.13",
     "orientation": "portrait",
+    "icon": "./assets/ucic-logo.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": false,
-    "runtimeVersion": "1.0.9",
+    "newArchEnabled": true,
+    "runtimeVersion": "1.0.13",
     "updates": {
-      "url": "https://u.expo.dev/ca204142-be2c-4e3c-bef4-8f680286bde6",
+      "url": "https://u.expo.dev/37684f22-bb57-4f27-a763-d23f5d6fcc52",
       "fallbackToCacheTimeout": 0,
       "checkAutomatically": "ON_LOAD"
     },
@@ -23,16 +24,18 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ucic.customerportal",
-      "buildNumber": "10",
+      "buildNumber": "14",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Microphone is used for voice ordering.",
-        "NSSpeechRecognitionUsageDescription": "Speech recognition is used to fill order fields from voice."
+        "NSSpeechRecognitionUsageDescription": "Speech recognition is used to fill order fields from voice.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.ucic.customerportal",
-      "versionCode": 10,
+      "versionCode": 14,
       "adaptiveIcon": {
+        "foregroundImage": "./assets/ucic-logo.png",
         "backgroundColor": "#1E40AF"
       },
       "permissions": [
@@ -45,10 +48,14 @@
       "./plugins/withNetworkSecurityConfig.js",
       "expo-updates",
       [
-        "@react-native-voice/voice",
+        "expo-speech-recognition",
         {
           "microphonePermission": "Microphone is used for voice ordering.",
-          "speechRecognitionPermission": "Speech recognition is used to fill order fields from voice."
+          "speechRecognitionPermission": "Speech recognition is used to fill order fields from voice.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox",
+            "com.google.android.tts"
+          ]
         }
       ],
       [
@@ -56,10 +63,12 @@
         {
           "android": {
             "usesCleartextTraffic": true,
-            "enableJetifier": true
+            "enableJetifier": true,
+            "newArchEnabled": true
           },
           "ios": {
-            "deploymentTarget": "15.1"
+            "deploymentTarget": "15.1",
+            "newArchEnabled": true
           }
         }
       ]
@@ -69,9 +78,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "ca204142-be2c-4e3c-bef4-8f680286bde6"
+        "projectId": "37684f22-bb57-4f27-a763-d23f5d6fcc52"
       }
     },
-    "owner": "saadkahns-team"
+    "owner": "khanyahyas-team"
   }
 }

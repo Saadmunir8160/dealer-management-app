@@ -1,25 +1,27 @@
 # Voice Order — local testing
 
-## Frontend API (required)
-`.env` must point at an API that has `/api/voice/process`:
+## Fast format (same LN codes as Item Code picker)
+Orders → **Voice** → speak or type using **LN Code** from the list:
 
-```env
-EXPO_PUBLIC_APP_ENV=development
-EXPO_PUBLIC_API_URL=http://localhost:5246
-EXPO_PUBLIC_ENABLE_LOGS=true
+```text
+5601 600 bags ORD-111
 ```
 
-Then restart Expo (`Ctrl+C` → `npx expo start --web`) so env reloads.
+| Part | Meaning |
+|------|--------|
+| `5601` | LN Code (e.g. OPC Bags) — must exist in Please Select Item Code |
+| `600 bags` | Only `500` or `600` |
+| `ORD-111` | Coupon (required) |
 
-## Backend
-```bash
-cd backend/src/DealerManagement.Api
-dotnet run
+### Examples from your catalog
+```text
+5601 600 bags ORD-111
+5604 500 bags ORD-222
+5703 600 bags ORD-333
+0021 500 bags ORD-444
 ```
-Swagger: http://localhost:5246/swagger
 
-## One-shot voice
-1. Orders → **Voice**
-2. Select customer
-3. Tap mic once → say clearly: `Add 20 rods`
-4. Draft order is created/updated automatically
+Voice matches against the **live product list** (same as the modal), not hard-coded names.
+
+## Backend / env
+API: `http://127.0.0.1:5246` · Login: `admin` / `Admin@123`

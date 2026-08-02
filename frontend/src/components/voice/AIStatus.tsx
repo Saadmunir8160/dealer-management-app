@@ -12,9 +12,9 @@ interface Props {
 const LABEL: Record<VoiceAiPhase, string> = {
   idle: 'Ready',
   recording: 'Listening...',
-  processing: 'AI thinking...',
+  processing: 'Extracting...',
   review: 'Review needed',
-  success: 'Extracted',
+  success: 'Ready',
   error: 'Error',
 };
 

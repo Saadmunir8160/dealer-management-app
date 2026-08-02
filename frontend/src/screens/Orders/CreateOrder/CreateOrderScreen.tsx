@@ -36,11 +36,10 @@ import ConfirmationDialog from '@components/modals/ConfirmationDialog';
 import {
   VoiceRecorder,
   TranscriptPanel,
-  ConfidenceCard,
   AIStatus,
 } from '@components/voice';
 import { getProductUnit } from '@utils/productUnit';
-import { normalizeFlexibleDate, maskYmdDateInput, isStrictYmdDate } from '@utils/dateParser';
+import { normalizeFlexibleDate, isStrictYmdDate } from '@utils/dateParser';
 import { parseApiError } from '@utils/errorHandler';
 import { bestFuzzyMatch } from '@utils/fuzzyMatch';
 import { Ionicons } from '@expo/vector-icons';
@@ -55,16 +54,6 @@ interface LineItem {
   quantity: number;
   unitPrice: number;
 }
-
-const todayIso = () => {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-};
-
-const isValidDeliveryDate = (value: string): boolean => isStrictYmdDate(value);
 
 /** Bags-per-truck choices for cement bag orders */
 const BAGS_PER_TRUCK = [500, 600] as const;
@@ -94,7 +83,6 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
   const [driver, setDriver] = useState('');
   const [vehicle, setVehicle] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
   const [items, setItems] = useState<LineItem[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [initialPickerShown, setInitialPickerShown] = useState(false);
@@ -111,8 +99,6 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
     { lineIndex: number; spoken: string; options: VoiceProductCandidate[] }[]
   >([]);
   const [customerName, setCustomerName] = useState('');
-
-  const orderDate = useMemo(() => todayIso(), []);
 
   const deliveryAreas = useMemo(
     () =>
@@ -152,14 +138,26 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
       if (result.dealerId && result.customerConfidence >= 70) {
         setDealerId(result.dealerId);
         const d = dealers.find(x => x.dealerId === result.dealerId);
-        if (d?.phone) setCustomerPhone(d.phone);
         if (!result.deliveryArea && d?.address) {
           setDeliveryAddress([d.address, d.city].filter(Boolean).join(', '));
         }
-      } else {
-        // Never lock/force a customer — user must pick (or confirm candidate chips)
-        setDealerId(0);
-        setCustomerPhone('');
+      } else if (result.items.length) {
+        // LN + bags (+ coupon) — keep / pick dealer for Place Order
+        setDealerId(prev => {
+          const id =
+            result.dealerId && result.dealerId > 0
+              ? result.dealerId
+              : prev > 0
+                ? prev
+                : dealers.find(d => d.status !== false)?.dealerId ?? 0;
+          const d = dealers.find(x => x.dealerId === id);
+          if (d) {
+            setCustomerName(d.dealerName);
+          }
+          return id;
+        });
+      } else if (!result.dealerId) {
+        setDealerId(prev => (prev > 0 ? prev : dealers.find(d => d.status !== false)?.dealerId ?? 0));
       }
 
       if (result.items.length) {
@@ -171,13 +169,25 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
           })),
         );
         const firstQty = result.items.find(i => i.quantity > 0)?.quantity;
-        if (firstQty) setBagsQty(String(firstQty));
+        if (firstQty === 500 || firstQty === 600) {
+          setBagsQty(String(firstQty));
+        } else if (firstQty) {
+          setBagsQty(
+            String(Math.abs(firstQty - 500) <= Math.abs(firstQty - 600) ? 500 : 600),
+          );
+        }
       }
 
       if (result.deliveryDate) setDeliveryDate(result.deliveryDate);
       if (result.deliveryArea) setDeliveryAddress(result.deliveryArea);
       if (result.notes) setOrderNotes(result.notes);
-      if (result.items.length) setOrderStep('lines');
+      if (result.couponNumber) {
+        setCouponNumber(result.couponNumber);
+        setCouponError(false);
+        setCouponValid(true);
+        setCouponDiscount(0);
+      }
+      if (result.items.length) setOrderStep(result.couponNumber ? 'checkout' : 'lines');
     },
     [dealers],
   );
@@ -192,22 +202,9 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
     onInfo: (title, message) => showSuccess(title, message),
   });
 
-  const selectedDealer = useMemo(
-    () => dealers.find(d => d.dealerId === dealerId),
-    [dealers, dealerId],
-  );
-
   const speechLangOptions: SelectOption[] = useMemo(
     () => voice.speechLanguages.map(l => ({ label: l.label, value: l.code })),
     [voice.speechLanguages],
-  );
-
-  const totalQty = useMemo(
-    () =>
-      items
-        .filter(i => i.productId > 0)
-        .reduce((s, i) => s + (Number(i.quantity) || 0), 0),
-    [items],
   );
 
   const itemCount = useMemo(
@@ -273,6 +270,12 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
           if (d?.address) {
             setDeliveryAddress([d.address, d.city].filter(Boolean).join(', '));
           }
+        } else {
+          const fallback = list.find(d => d.status !== false);
+          if (fallback) {
+            setDealerId(fallback.dealerId);
+            setCustomerName(fallback.dealerName);
+          }
         }
       })
       .catch(() => showError('Error', 'Failed to load dealers or products'))
@@ -298,9 +301,6 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
     setVoiceFilled(false);
     setCustomerCandidates([]);
     setItemCandidates([]);
-    setCustomerName('');
-    setCustomerPhone('');
-    setDealerId(preselectedDealerId ?? 0);
     setCouponNumber('');
     setDeliveryDate('');
     setPoNumber('');
@@ -313,13 +313,27 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
     setCouponDiscount(0);
     setDeliveryAddress('');
     setBagsQty(String(DEFAULT_BAGS_PER_TRUCK));
+    // Restore default dealer so Place Order still works after Start Over
+    if (preselectedDealerId) {
+      setDealerId(preselectedDealerId);
+      const d = dealers.find(x => x.dealerId === preselectedDealerId);
+      setCustomerName(d?.dealerName ?? '');
+    } else {
+      const fallback = dealers.find(d => d.status !== false);
+      if (fallback) {
+        setDealerId(fallback.dealerId);
+        setCustomerName(fallback.dealerName);
+      } else {
+        setDealerId(0);
+        setCustomerName('');
+      }
+    }
     void loadProducts();
   };
 
   const onPickCustomerCandidate = (c: VoiceCustomerCandidate) => {
     setDealerId(c.dealerId);
     setCustomerName(c.dealerName);
-    setCustomerPhone(c.phone || '');
     setCustomerCandidates([]);
     const d = dealers.find(x => x.dealerId === c.dealerId);
     if (d?.address) {
@@ -342,20 +356,6 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
     setItemCandidates(prev => prev.filter(x => x.lineIndex !== lineIndex));
     setVoiceFilled(true);
     void productName;
-  };
-
-  const updateItem = (index: number, patch: Partial<LineItem>) => {
-    setItems(prev => {
-      const next = [...prev];
-      const row = { ...next[index], ...patch };
-      if (patch.productId != null) {
-        const product = products.find(p => p.productId === patch.productId);
-        if (product) row.unitPrice = product.price;
-      }
-      next[index] = row;
-      return next;
-    });
-    setVoiceFilled(false);
   };
 
   const addItem = () => {
@@ -417,84 +417,66 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
     setVoiceFilled(false);
   };
 
-  const proceedToCheckout = () => {
-    if (itemCount === 0) {
-      showError('Validation', 'Select at least one product first.');
-      setPickerOpen(true);
-      return;
-    }
-    const bags = parseBagsQty(bagsQty);
-    if (!(BAGS_PER_TRUCK as readonly number[]).includes(bags)) {
-      showError('Validation', 'Select bags per truck: 500 or 600.');
-      return;
-    }
-    setOrderStep('checkout');
-  };
-
-  const validateCouponLive = async (code: string): Promise<boolean> => {
+  /** Any non-empty coupon is accepted — no server / format validation. */
+  const acceptCoupon = (code: string) => {
     const trimmed = code.trim();
     if (!trimmed) {
       setCouponValid(null);
       setCouponDiscount(0);
       setCouponError(false);
-      return true;
-    }
-    setValidatingCoupon(true);
-    try {
-      const result = await OrderService.validateCoupon(trimmed);
-      setCouponValid(result.isValid);
-      setCouponDiscount(result.isValid ? result.discountPercentage : 0);
-      setCouponError(!result.isValid);
-      return result.isValid;
-    } catch (e: unknown) {
-      setCouponValid(false);
-      setCouponError(true);
-      const err = parseApiError(e);
-      showError('Coupon check failed', err.message || 'Could not validate coupon.');
       return false;
-    } finally {
-      setValidatingCoupon(false);
     }
+    setCouponValid(true);
+    setCouponDiscount(0);
+    setCouponError(false);
+    return true;
   };
 
   const submitOrder = async () => {
     const coupon = couponNumber.trim();
     setCouponError(false);
 
-    if (!customerName.trim()) {
-      showError('Validation', 'Please enter a customer name.');
+    if (!coupon) {
+      showError('Validation', 'Coupon number is required.');
       return;
     }
+    acceptCoupon(coupon);
 
+    // Manual flow: bags + coupon is enough — resolve dealer silently
+    // (preselected, already chosen, fuzzy name, or first active dealer)
     const matchedCustomer =
       dealerId > 0
         ? dealers.find(d => d.dealerId === dealerId)
-        : bestFuzzyMatch(customerName.trim(), dealers, d => d.dealerName, 0.55)?.item;
+        : customerName.trim()
+          ? bestFuzzyMatch(customerName.trim(), dealers, d => d.dealerName, 0.55)?.item
+          : undefined;
 
-    const resolvedDealerId = matchedCustomer?.dealerId ?? dealerId;
+    let resolvedDealerId = matchedCustomer?.dealerId ?? (dealerId > 0 ? dealerId : 0);
+    if (!resolvedDealerId) {
+      const fallback = dealers.find(d => d.status !== false) ?? dealers[0];
+      if (fallback) {
+        resolvedDealerId = fallback.dealerId;
+        setDealerId(fallback.dealerId);
+        setCustomerName(fallback.dealerName);
+      }
+    }
     if (!resolvedDealerId) {
       showError(
         'Validation',
-        'Customer not found in the system. Type a name that matches an existing dealer, or pick from voice suggestions.',
+        'No dealer available. Add a dealer in the system, then place the order.',
       );
       return;
     }
-    if (matchedCustomer && matchedCustomer.dealerName !== customerName.trim()) {
+    if (matchedCustomer) {
       setDealerId(matchedCustomer.dealerId);
       setCustomerName(matchedCustomer.dealerName);
     }
 
-    if (deliveryDate.trim()) {
-      if (!isStrictYmdDate(deliveryDate.trim())) {
-        showError(
-          'Validation',
-          'Invalid delivery date. Use format 2026-07-26',
-        );
-        return;
-      }
-    }
-    if (!deliveryAddress.trim()) {
-      showError('Validation', 'Delivery area / address is required.');
+    if (deliveryDate.trim() && !isStrictYmdDate(deliveryDate.trim())) {
+      showError(
+        'Validation',
+        'Invalid delivery date. Use format 2026-07-26',
+      );
       return;
     }
 
@@ -502,11 +484,6 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
     if (!(BAGS_PER_TRUCK as readonly number[]).includes(bags)) {
       showError('Validation', 'Select bags per truck: 500 or 600.');
       return;
-    }
-
-    if (coupon) {
-      const okCoupon = await validateCouponLive(coupon);
-      if (!okCoupon) return;
     }
 
     // Ensure every line uses the top-level bags qty when set
@@ -560,7 +537,7 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
       showError(
         'Error',
         err.message ||
-          'Failed to save order. Select a dealer from the list and try again.',
+          'Failed to save order. Check connection and try again.',
       );
     } finally {
       setSaving(false);
@@ -569,9 +546,16 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const onReviewSave = async () => {
+    // LN + bags + coupon orders: place directly (no AI confidence gate)
+    const ready =
+      itemCount > 0 &&
+      !!couponNumber.trim() &&
+      (BAGS_PER_TRUCK as readonly number[]).includes(parseBagsQty(bagsQty));
     if (
-      voice.needsConfirmation ||
-      (voice.confidence != null && voice.confidence.overall < 90)
+      mode === 'voice' &&
+      !ready &&
+      (voice.needsConfirmation ||
+        (voice.confidence != null && voice.confidence.overall < 90))
     ) {
       setConfirmLowConfidence(true);
       return;
@@ -580,9 +564,6 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   if (loading) return <AppLoader message="Loading..." />;
-
-  const detectedCustomer =
-    customerName || selectedDealer?.dealerName || ' - ';
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -680,54 +661,12 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
                   onChangeTyped={voice.setTypedCommand}
                   onExtract={voice.onRunTypedCommand}
                   extracting={voice.processing}
-                  extractLabel="Extract with AI"
+                  extractLabel="Fill order"
                 />
-
-                <ConfidenceCard
-                  confidence={voice.confidence}
-                  needsConfirmation={voice.needsConfirmation}
-                />
-
-                {voice.warnings.length > 0 && (
-                  <View style={styles.reviewBanner}>
-                    <Text style={styles.reviewBannerTitle}>Extract notes</Text>
-                    {voice.warnings.slice(0, 4).map((w, i) => (
-                      <Text key={`warn-${i}`} style={styles.reviewWarn}>
-                        - {w}
-                      </Text>
-                    ))}
-                  </View>
-                )}
-
-                <View style={styles.detectedBox}>
-                  <Text style={styles.detectedTitle}>AI detected fields</Text>
-                  <DetectedRow
-                    ok={!!selectedDealer || !!customerName}
-                    label={`Customer: ${detectedCustomer}`}
-                  />
-                  <DetectedRow
-                    ok={!!customerPhone}
-                    label={`Phone: ${customerPhone || ' - '}`}
-                  />
-                  <DetectedRow
-                    ok={itemCount > 0}
-                    label={`Products: ${itemCount} item${itemCount === 1 ? '' : 's'}`}
-                  />
-                  <DetectedRow ok={totalQty > 0} label={`Total Quantity: ${totalQty}`} />
-                  <DetectedRow
-                    ok={!!deliveryDate}
-                    label={`Delivery Date: ${deliveryDate || ' - '}`}
-                  />
-                  <DetectedRow
-                    ok={!!deliveryAddress}
-                    label={`Address: ${deliveryAddress || ' - '}`}
-                  />
-                  <DetectedRow ok={!!orderNotes} label={`Notes: ${orderNotes || ' - '}`} />
-                </View>
 
                 {customerCandidates.length > 1 && (
                   <View style={styles.candidateWrap}>
-                    <Text style={styles.detectedTitle}>Multiple customers  -  choose one</Text>
+                    <Text style={styles.candidateTitle}>Multiple customers — choose one</Text>
                     <View style={styles.chipRow}>
                       {customerCandidates.map(c => (
                         <TouchableOpacity
@@ -747,7 +686,7 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
 
                 {itemCandidates.map(block => (
                   <View key={`item-cand-${block.lineIndex}`} style={styles.candidateWrap}>
-                    <Text style={styles.detectedTitle}>
+                    <Text style={styles.candidateTitle}>
                       Multiple products for &quot;{block.spoken}&quot;
                     </Text>
                     <View style={styles.chipRow}>
@@ -789,10 +728,10 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
                     ]}
                     onPress={voice.onRetryExtract}
                     disabled={voice.processing}
-                    accessibilityLabel="Retry AI"
+                    accessibilityLabel="Retry"
                   >
                     <Text style={styles.resetBtnText} numberOfLines={1}>
-                      Retry AI
+                      Retry
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -828,66 +767,6 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
                   </View>
                 )}
               </View>
-
-              {(orderStep === 'checkout' || mode === 'voice') && (
-              <View style={[styles.formGrid, wide && styles.formGridWide]}>
-                <View style={styles.field}>
-                  <AppInput
-                    label="Customer *"
-                    value={customerName}
-                    onChangeText={text => {
-                      setCustomerName(text);
-                      setDealerId(0);
-                      setVoiceFilled(false);
-                    }}
-                    placeholder=""
-                    filled
-                    autoCapitalize="words"
-                  />
-                </View>
-
-                <View style={styles.field}>
-                  <AppInput label="Order Date" value={orderDate} editable={false} filled />
-                </View>
-
-                <View style={styles.field}>
-                  <AppInput
-                    label="Delivery Date"
-                    value={deliveryDate}
-                    onChangeText={text => {
-                      setDeliveryDate(maskYmdDateInput(text));
-                      setVoiceFilled(false);
-                    }}
-                    placeholder="2026-07-26"
-                    keyboardType="number-pad"
-                    maxLength={10}
-                    filled
-                    error={
-                      deliveryDate.length > 0 &&
-                      deliveryDate.length < 10
-                        ? undefined
-                        : deliveryDate.length === 10 && !isValidDeliveryDate(deliveryDate)
-                          ? 'Invalid date'
-                          : undefined
-                    }
-                  />
-                </View>
-
-                <View style={styles.field}>
-                  <AppInput
-                    label="Delivery Area *"
-                    value={deliveryAddress}
-                    onChangeText={text => {
-                      setDeliveryAddress(text);
-                      setVoiceFilled(false);
-                    }}
-                    placeholder=""
-                    filled
-                    autoCapitalize="words"
-                  />
-                </View>
-              </View>
-              )}
 
               {/* UCIC-style Order Lines — Bags per Truck 500 | 600 */}
               <View style={styles.linesCard}>
@@ -978,38 +857,26 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
                 )}
               </View>
 
-              {(orderStep === 'checkout' || mode === 'voice') && (
+              {(orderStep === 'checkout' || mode === 'voice' || itemCount > 0) && (
               <View style={styles.infoCard}>
                 <Text style={styles.infoTitle}>Order Information</Text>
                 <AppInput
-                  label="Coupon"
+                  label="Coupon *"
                   value={couponNumber}
                   onChangeText={text => {
                     setCouponNumber(text);
-                    setCouponValid(null);
                     setCouponDiscount(0);
-                    if (text.trim()) setCouponError(false);
+                    setValidatingCoupon(false);
+                    if (text.trim()) {
+                      setCouponValid(true);
+                      setCouponError(false);
+                    } else {
+                      setCouponValid(null);
+                      setCouponError(false);
+                    }
                   }}
-                  onBlur={() => {
-                    const code = couponNumber.trim();
-                    if (code) void validateCouponLive(code);
-                  }}
-                  placeholder="Optional order / coupon reference"
                   filled
-                  error={
-                    couponError && couponNumber.trim()
-                      ? 'Invalid coupon'
-                      : undefined
-                  }
                 />
-                {validatingCoupon ? (
-                  <Text style={styles.couponHint}>Checking coupon...</Text>
-                ) : couponValid === true ? (
-                  <Text style={styles.couponOk}>
-                    Coupon accepted
-                    {couponDiscount > 0 ? ` — ${couponDiscount}% off` : ''}
-                  </Text>
-                ) : null}
               </View>
               )}
 
@@ -1029,52 +896,26 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
                   <Text style={styles.summaryValue}>{totalTons.toFixed(2)}</Text>
                 </View>
 
-                {orderStep === 'checkout' && couponError && couponNumber.trim() ? (
-                  <View style={styles.couponAlert}>
-                    <Text style={styles.couponAlertText}>Invalid coupon</Text>
-                  </View>
-                ) : null}
-
-                {orderStep === 'lines' && mode === 'manual' ? (
-                  <View style={styles.summaryActions}>
-                    <AppButton
-                      title="Back"
-                      variant="outline"
-                      onPress={() => navigation.goBack()}
-                      style={styles.backBtn}
-                    />
-                    <AppButton
-                      title="Proceed to Checkout"
-                      onPress={proceedToCheckout}
-                      style={styles.proceedBtn}
-                      disabled={itemCount === 0}
-                    />
-                  </View>
-                ) : (
-                  <View style={styles.summaryActions}>
-                    {mode === 'manual' ? (
-                      <AppButton
-                        title="Back"
-                        variant="outline"
-                        onPress={() => setOrderStep('lines')}
-                        style={styles.backBtn}
-                      />
-                    ) : (
-                      <AppButton
-                        title="Back"
-                        variant="outline"
-                        onPress={() => navigation.goBack()}
-                        style={styles.backBtn}
-                      />
-                    )}
-                    <AppButton
-                      title={saving ? 'Placing...' : 'Place Order'}
-                      onPress={onReviewSave}
-                      isLoading={saving}
-                      style={styles.placeBtn}
-                    />
-                  </View>
-                )}
+                <View style={styles.summaryActions}>
+                  <AppButton
+                    title="Back"
+                    variant="outline"
+                    onPress={() => navigation.goBack()}
+                    style={styles.backBtn}
+                  />
+                  <AppButton
+                    title={saving ? 'Placing...' : 'Place Order'}
+                    onPress={onReviewSave}
+                    isLoading={saving}
+                    style={styles.placeBtn}
+                    disabled={
+                      saving ||
+                      itemCount === 0 ||
+                      !parseBagsQty(bagsQty) ||
+                      !couponNumber.trim()
+                    }
+                  />
+                </View>
               </View>
             </View>
           </View>
@@ -1090,10 +931,8 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
 
         <ConfirmationDialog
           visible={confirmLowConfidence}
-          title="Confirm low-confidence order?"
-          message={`AI overall confidence is ${
-            voice.confidence?.overall ?? 0
-          }% (below 90%). Review customer, products, date, and area, then confirm to place the order.`}
+          title="Confirm order?"
+          message="Review product, bags, and coupon, then confirm to place the order."
           confirmLabel="Place Order"
           cancelLabel="Review again"
           isLoading={saving}
@@ -1106,13 +945,6 @@ const CreateOrderScreen: React.FC<Props> = ({ route, navigation }) => {
     </SafeAreaView>
   );
 };
-
-const DetectedRow = ({ ok, label }: { ok: boolean; label: string }) => (
-  <View style={styles.detectedRow}>
-    <Text style={[styles.check, ok ? styles.checkOk : styles.checkMute]}>{ok ? 'Y' : 'o'}</Text>
-    <Text style={styles.detectedLabel}>{label}</Text>
-  </View>
-);
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
@@ -1251,49 +1083,15 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     lineHeight: 22,
   },
-  reviewBanner: {
-    backgroundColor: '#FFF7ED',
-    borderColor: '#FDBA74',
-    borderWidth: 1,
-    borderRadius: BorderRadius.md,
-    padding: Spacing[3],
-    marginBottom: Spacing[3],
-    gap: 4,
-  },
-  reviewBannerTitle: {
-    ...Typography.label,
-    color: '#9A3412',
-    fontWeight: '700',
-  },
-  reviewBannerBody: {
-    ...Typography.caption,
-    color: '#9A3412',
-  },
-  reviewWarn: {
-    ...Typography.caption,
-    color: '#C2410C',
-  },
   fieldFull: {
     width: '100%',
     flexBasis: '100%',
   },
-  detectedBox: {
-    backgroundColor: Colors.primaryLight,
-    borderRadius: BorderRadius.md,
-    padding: Spacing[3],
-    marginBottom: Spacing[3],
-    gap: Spacing[2],
-  },
-  detectedTitle: {
+  candidateTitle: {
     ...Typography.label,
     color: Colors.primaryDark,
     marginBottom: Spacing[1],
   },
-  detectedRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2] },
-  check: { fontWeight: '700', width: 16 },
-  checkOk: { color: Colors.success },
-  checkMute: { color: Colors.gray400 },
-  detectedLabel: { ...Typography.bodySmall, color: Colors.textPrimary, flex: 1 },
   candidateWrap: { marginBottom: Spacing[3] },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[2] },
   chip: {
@@ -1669,12 +1467,6 @@ const styles = StyleSheet.create({
   },
   couponAlertText: { ...Typography.bodySmall, color: Colors.error, fontWeight: '600' },
   couponHint: { ...Typography.bodySmall, color: Colors.gray600, marginTop: Spacing[1] },
-  couponOk: {
-    ...Typography.bodySmall,
-    color: Colors.success,
-    marginTop: Spacing[1],
-    fontWeight: '600',
-  },
   summaryActions: {
     flexDirection: 'row',
     gap: Spacing[3],

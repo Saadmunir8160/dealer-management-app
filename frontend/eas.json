@@ -38,6 +38,20 @@
         "EXPO_PUBLIC_GEMINI_MODEL": "gemini-2.5-flash"
       }
     },
+    "preview_ios_simulator": {
+      "distribution": "internal",
+      "channel": "preview",
+      "ios": {
+        "simulator": true,
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "production",
+        "EXPO_PUBLIC_API_URL": "https://dealer-management-app-production.up.railway.app",
+        "EXPO_PUBLIC_ENABLE_LOGS": "true",
+        "EXPO_PUBLIC_GEMINI_MODEL": "gemini-2.5-flash"
+      }
+    },
     "production": {
       "channel": "production",
       "android": {

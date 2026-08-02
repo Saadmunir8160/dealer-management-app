@@ -91,6 +91,7 @@ export function parseGeminiOrderJson(raw: string): GeminiOrderExtraction {
     delivery_date: asString(root.delivery_date),
     delivery_area: asString(root.delivery_area),
     notes: asString(root.notes),
+    coupon_number: asString(root.coupon_number || root.couponNumber) || undefined,
     confidence,
     needs_confirmation: needs,
     missing_fields: missing,

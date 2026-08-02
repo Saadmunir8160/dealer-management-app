@@ -1,10 +1,5 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// src/store/slices/authSlice.ts
-// Redux slice for authentication state.
-// Handles login, logout, token refresh, and user hydration.
-// ─────────────────────────────────────────────────────────────────────────────
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { AuthState, LoginRequest } from '@types';
+import { AuthState, LoginRequest, User } from '@types';
 import { AuthService } from '@services/authService';
 
 const initialState: AuthState = {
@@ -29,6 +24,7 @@ export const loginThunk = createAsyncThunk(
 export const logoutThunk = createAsyncThunk('auth/logout', async (_, { rejectWithValue }) => {
   try {
     await AuthService.logout();
+    return true;
   } catch (error) {
     return rejectWithValue(error);
   }
@@ -46,6 +42,20 @@ export const hydrateAuthThunk = createAsyncThunk('auth/hydrate', async (_, { rej
   }
 });
 
+export const refreshProfileThunk = createAsyncThunk(
+  'auth/refreshProfile',
+  async (_, { getState, rejectWithValue }) => {
+    try {
+      const state = getState() as { auth: AuthState };
+      const current = state.auth.user;
+      if (!current) return null;
+      return await AuthService.refreshProfile(current);
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  },
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -54,13 +64,18 @@ const authSlice = createSlice({
       state.accessToken = action.payload.accessToken;
       state.refreshToken = action.payload.refreshToken;
     },
+    setUser: (state, action: PayloadAction<User>) => {
+      state.user = action.payload;
+    },
     clearAuth: state => {
       Object.assign(state, initialState);
     },
   },
   extraReducers: builder => {
     builder
-      .addCase(loginThunk.pending, state => { state.isLoading = true; })
+      .addCase(loginThunk.pending, state => {
+        state.isLoading = true;
+      })
       .addCase(loginThunk.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = true;
@@ -68,9 +83,13 @@ const authSlice = createSlice({
         state.accessToken = action.payload.accessToken;
         state.refreshToken = action.payload.refreshToken;
       })
-      .addCase(loginThunk.rejected, state => { state.isLoading = false; })
+      .addCase(loginThunk.rejected, state => {
+        state.isLoading = false;
+      })
 
-      .addCase(logoutThunk.fulfilled, state => { Object.assign(state, initialState); })
+      .addCase(logoutThunk.fulfilled, state => {
+        Object.assign(state, initialState);
+      })
 
       .addCase(hydrateAuthThunk.fulfilled, (state, action) => {
         if (action.payload.user && action.payload.accessToken) {
@@ -78,9 +97,13 @@ const authSlice = createSlice({
           state.accessToken = action.payload.accessToken;
           state.isAuthenticated = true;
         }
+      })
+
+      .addCase(refreshProfileThunk.fulfilled, (state, action) => {
+        if (action.payload) state.user = action.payload;
       });
   },
 });
 
-export const { setTokens, clearAuth } = authSlice.actions;
+export const { setTokens, setUser, clearAuth } = authSlice.actions;
 export default authSlice.reducer;

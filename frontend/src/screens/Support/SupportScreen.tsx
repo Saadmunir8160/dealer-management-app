@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useForm, Controller } from 'react-hook-form';
@@ -231,7 +232,7 @@ const ContactCard = ({
   hint?: string;
   isRTL?: boolean;
 }) => (
-  <AppCard style={[styles.contactCard, isRTL && styles.rowReverse]}>
+  <AppCard style={StyleSheet.flatten([styles.contactCard, isRTL && styles.rowReverse]) as ViewStyle}>
     <View style={[styles.contactIcon, { backgroundColor: color + '18' }]}>
       <Text>{icon}</Text>
     </View>

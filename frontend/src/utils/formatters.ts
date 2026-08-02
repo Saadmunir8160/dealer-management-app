@@ -9,7 +9,7 @@ export const formatCurrency = (amount: number, currency = 'USD'): string => {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
 };
 
-export const formatDate = (dateString: string, pattern = DATE_FORMATS.DISPLAY): string => {
+export const formatDate = (dateString: string, pattern: string = DATE_FORMATS.DISPLAY): string => {
   try {
     return format(parseISO(dateString), pattern);
   } catch {

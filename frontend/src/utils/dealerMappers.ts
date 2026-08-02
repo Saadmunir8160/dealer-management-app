@@ -17,6 +17,8 @@ interface BackendDealerDto {
   Phone?: string | null;
   mobile?: string | null;
   Mobile?: string | null;
+  creditLimit?: number;
+  CreditLimit?: number;
   status?: string | boolean | number;
   Status?: string | boolean | number;
   createdDate?: string;
@@ -49,11 +51,16 @@ export const mapBackendDealer = (dto: BackendDealerDto): Dealer => {
   return {
     dealerId: dto.dealerId ?? dto.DealerId ?? dto.id ?? dto.Id ?? 0,
     dealerName: String(dto.dealerName ?? dto.DealerName ?? '—'),
+    dealerCode: (() => {
+      const c = dto.dealerCode ?? dto.DealerCode;
+      return c != null && String(c).trim() ? String(c).trim() : null;
+    })(),
     contactPerson: dto.contactPerson ?? dto.ContactPerson ?? null,
     phone: dto.phone ?? dto.Phone ?? dto.mobile ?? dto.Mobile ?? null,
     email: dto.email ?? dto.Email ?? null,
     address: primary?.addressLine1 ?? primary?.AddressLine1 ?? null,
     city: primary?.city ?? primary?.City ?? null,
+    creditLimit: Number(dto.creditLimit ?? dto.CreditLimit ?? 0),
     status: isActiveStatus(dto.status ?? dto.Status),
     createdDate: String(
       dto.createdDate ?? dto.CreatedDate ?? new Date().toISOString(),

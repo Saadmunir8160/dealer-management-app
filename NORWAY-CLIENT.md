@@ -1,30 +1,38 @@
 # Norway client — share this
 
 ## Install (Android APK)
-Install page: https://expo.dev/accounts/khanasad/projects/ucic-customer-portal/builds/753d664a-3ca4-45f9-9340-3ac76ff992a3
+Install page (Railway API):  
+https://expo.dev/accounts/khanyahyas-team/projects/yahyakhan/builds/0bf92dc1-767a-4c08-a444-fad5bd43534a
 
-Direct APK: https://expo.dev/artifacts/eas/OiSvbstKiy9t5Wpnz6CCMhZqdPQkFCcVDt0BJzR_IsU.apk
+Direct APK:  
+https://expo.dev/artifacts/eas/Ofjztc0eHKK8HMRqGa6Di1EkPrxTE2AAhUZdDXnS-6Y.apk
 
-Version: **1.0.7** (UCIC fields + live Dashboard + OTA)
+After install: force-close app **twice** to load latest OTA (UCIC item list from Railway).
 
-API: `https://dealer-management-app-production.up.railway.app`
+OTA: https://expo.dev/accounts/khanyahyas-team/projects/yahyakhan/updates/761b6ca5-68eb-4430-b4e1-cf34b6be040c
+
+Version: **1.0.13**
+
+API (Railway — always on):  
+`https://dealer-management-app-production.up.railway.app`
 
 ## Login
-- Username: `admin`
+- Username: `admin` (or `admin@dealerapp.com`)
 - Password: `Admin@123`
 
 ## Notes for client
 1. Allow install from unknown sources if Android asks.
 2. Need internet (Wi‑Fi or mobile data).
-3. PC / Cloudflare tunnel **not required**.
-4. Later UI-only fixes can ship via OTA (no reinstall).
+3. **PC / Cloudflare tunnel NOT required.**
+4. After install: open app → login.
 
 ## What they will see
-- **New Order:** Coupon, ERP #, Delivery Area, Driver, Vehicle + live products
-- **Dashboard recent orders:** Coupon, Status, Area, Driver, Vehicle, ERP
-- **Orders list:** same UCIC fields
+- **Please Select Item Code:** UCIC LN list (5601 OPC Bags, 5505 MCT Bulk, 5719, …)
+- **New Order:** Coupon, bags 500/600, Place Order
+- **Profile:** UCIC Customer Information (LN 1087 Mashid)
+- **Orders list:** Coupon, ERP, Status, Area, Driver, Vehicle
 
 ## Backend status
 - Railway API + Postgres: Online
-- Dealers / products seeded
-- Orders store UCIC delivery fields
+- UCIC products seeded (no PRD-* demo codes)
+- Login verified

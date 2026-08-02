@@ -38,7 +38,7 @@ const loginSchema = yup.object({
 type LoginForm = yup.InferType<typeof loginSchema>;
 
 const LoginScreen: React.FC<Props> = ({ navigation }) => {
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, refreshProfile } = useAuth();
   const { showError } = useToast();
 
   const {
@@ -56,6 +56,13 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       if (loginThunk.rejected.match(result)) {
         const payload = result.payload as { message?: string } | undefined;
         showError('Login Failed', payload?.message ?? 'Invalid credentials');
+        return;
+      }
+      // Load UCIC customer fields (LN / credit) after session is saved.
+      try {
+        await refreshProfile();
+      } catch {
+        // Profile enrich must never undo a successful login.
       }
     } catch (error) {
       const msg = (error as { message?: string })?.message ?? 'Login failed. Please try again.';

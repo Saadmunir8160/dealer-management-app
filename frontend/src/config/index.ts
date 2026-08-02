@@ -64,7 +64,8 @@ const configs: Record<
 > = {
   development: {
     API_BASE_URL,
-    API_TIMEOUT: 30000,
+    // Tunnel / overseas clients often need >30s (Norway → Cloudflare).
+    API_TIMEOUT: 120000,
     ENABLE_LOGS: true,
     ENABLE_FLIPPER: true,
     USE_MOCK: false,
@@ -72,7 +73,7 @@ const configs: Record<
   },
   staging: {
     API_BASE_URL,
-    API_TIMEOUT: 30000,
+    API_TIMEOUT: 120000,
     ENABLE_LOGS: true,
     ENABLE_FLIPPER: false,
     USE_MOCK: false,
@@ -80,7 +81,7 @@ const configs: Record<
   },
   production: {
     API_BASE_URL,
-    API_TIMEOUT: 30000,
+    API_TIMEOUT: 120000,
     ENABLE_LOGS,
     ENABLE_FLIPPER: false,
     USE_MOCK: false,

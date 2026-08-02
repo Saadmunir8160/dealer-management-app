@@ -36,8 +36,8 @@ interface BackendProductDto {
 export const mapBackendProduct = (dto: BackendProductDto): Product => {
   const productName = dto.name ?? dto.Name ?? dto.productName ?? dto.ProductName ?? '—';
   const sku = dto.sku ?? dto.SKU ?? dto.Sku ?? null;
-  const code =
-    dto.code ?? dto.Code ?? dto.productCode ?? dto.ProductCode ?? null;
+  const rawCode = dto.code ?? dto.Code ?? dto.productCode ?? dto.ProductCode ?? null;
+  const code = rawCode != null && String(rawCode).trim() ? String(rawCode).trim() : null;
   const type = dto.type ?? dto.Type ?? dto.unitOfMeasure ?? dto.UnitOfMeasure ?? null;
 
   return {

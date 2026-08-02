@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { AppStackParamList } from '@types';
 import { useAuth } from '@hooks';
 import { useLanguage } from '@context';
@@ -20,11 +23,32 @@ import LogoutDialog from '@components/modals/LogoutDialog';
 
 type NavProp = NativeStackNavigationProp<AppStackParamList>;
 
+const formatCredit = (n: number) =>
+  `${Number(n || 0).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
 const ProfileScreen: React.FC = () => {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const { t, isRTL } = useLanguage();
   const navigation = useNavigation<NavProp>();
   const [showLogout, setShowLogout] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const loadProfile = async () => {
+    setLoading(true);
+    try {
+      await refreshProfile();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const goTo = (screen: keyof AppStackParamList, params?: object) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,7 +60,13 @@ const ProfileScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <PortalHeader onLogoutPress={() => setShowLogout(true)} />
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={() => void loadProfile()} />
+        }
+      >
         <Text style={[styles.title, isRTL && styles.rtlText]}>{t('customerProfile')}</Text>
         <Text style={[styles.subtitle, isRTL && styles.rtlText]}>
           {t('customerProfileSubtitle')}
@@ -44,48 +74,73 @@ const ProfileScreen: React.FC = () => {
 
         <AppCard style={styles.card}>
           <View style={[styles.cardHeader, isRTL && styles.rowReverse]}>
-            <Text style={[styles.cardTitle, isRTL && styles.rtlText]}>{t('customerInformation')}</Text>
+            <Text style={[styles.cardTitle, isRTL && styles.rtlText]}>
+              {t('customerInformation')}
+            </Text>
             <TouchableOpacity
-              style={styles.changePwdBtn}
+              style={[styles.changePwdBtn, isRTL && styles.rowReverse]}
               onPress={() => goTo('ChangePassword')}
             >
+              <Ionicons name="lock-closed-outline" size={14} color={Colors.white} />
               <Text style={styles.changePwdText}>{t('changePassword')}</Text>
             </TouchableOpacity>
           </View>
 
+          {loading && !user.lnCode ? (
+            <ActivityIndicator color={Colors.primary} style={{ marginVertical: Spacing[4] }} />
+          ) : null}
+
           <View style={styles.grid}>
             <InfoBlock title={t('basicInformation')} isRTL={isRTL}>
-              <Row label={t('customerName')} value={user.customerNameAr || user.fullName} isRTL={isRTL} />
+              <Row
+                label={t('customerName')}
+                value={user.customerNameAr || user.fullName || '—'}
+                isRTL={isRTL}
+              />
               <Row label={t('customerCode')} value={user.customerCode || 'N/A'} isRTL={isRTL} />
               <Row label={t('lnCode')} value={user.lnCode || 'N/A'} isRTL={isRTL} />
-              <Row label={t('verificationStatus')} value={user.verificationStatus || 'Not Verified'} isRTL={isRTL} />
+              <Row
+                label={t('verificationStatus')}
+                value={user.verificationStatus || 'Not Verified'}
+                isRTL={isRTL}
+              />
             </InfoBlock>
 
             <InfoBlock title={t('financialInformation')} isRTL={isRTL}>
               <Row
                 label={t('availableCredit')}
-                value={Number(user.availableCredit ?? 0).toFixed(2)}
+                value={`${formatCredit(Number(user.availableCredit ?? 0))} ر.س.`}
                 isRTL={isRTL}
               />
-              <Row
-                label={t('creditExpiry')}
-                value={user.creditExpiry ? formatDate(user.creditExpiry, 'MMM dd, yyyy') : '—'}
-                isRTL={isRTL}
-              />
+              {user.creditExpiry ? (
+                <Row
+                  label={t('creditExpiry')}
+                  value={formatDate(user.creditExpiry, 'MMM dd, yyyy')}
+                  isRTL={isRTL}
+                />
+              ) : null}
             </InfoBlock>
 
             <InfoBlock title={t('userAccountDetails')} isRTL={isRTL}>
-              <Row label={t('fullName')} value={user.fullName} isRTL={isRTL} />
-              <Row label={t('email')} value={user.email} isRTL={isRTL} />
+              <Row label={t('fullName')} value={user.fullName || '—'} isRTL={isRTL} />
+              <Row label={t('email')} value={user.email || '—'} isRTL={isRTL} />
               <Row label={t('phoneNumber')} value={user.phone || '—'} isRTL={isRTL} />
-              <Row label={t('username')} value={user.username || user.email} isRTL={isRTL} />
-              <Row label={t('roles')} value={user.role} isRTL={isRTL} />
+              <Row
+                label={t('username')}
+                value={user.username || user.email || '—'}
+                isRTL={isRTL}
+              />
+              <Row label={t('roles')} value={user.role || '—'} isRTL={isRTL} />
             </InfoBlock>
 
             <InfoBlock title={t('accountInformation')} isRTL={isRTL}>
               <Row
                 label={t('createdAt')}
-                value={formatDate(user.createdDate, 'MMM dd, yyyy, h:mm:ss a')}
+                value={
+                  user.createdDate
+                    ? formatDate(user.createdDate, 'MMM dd, yyyy, h:mm:ss a')
+                    : '—'
+                }
                 isRTL={isRTL}
               />
             </InfoBlock>
@@ -93,10 +148,7 @@ const ProfileScreen: React.FC = () => {
         </AppCard>
       </ScrollView>
 
-      <LogoutDialog
-        visible={showLogout}
-        onClose={() => setShowLogout(false)}
-      />
+      <LogoutDialog visible={showLogout} onClose={() => setShowLogout(false)} />
     </SafeAreaView>
   );
 };
@@ -135,7 +187,12 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   container: { padding: Spacing[4], paddingBottom: Spacing[8] },
   title: { ...Typography.h4, color: Colors.textPrimary },
-  subtitle: { ...Typography.bodySmall, color: Colors.textSecondary, marginTop: 4, marginBottom: Spacing[4] },
+  subtitle: {
+    ...Typography.bodySmall,
+    color: Colors.textSecondary,
+    marginTop: 4,
+    marginBottom: Spacing[4],
+  },
   card: { padding: Spacing[4] },
   cardHeader: {
     flexDirection: 'row',
@@ -150,6 +207,9 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing[3],
     paddingVertical: Spacing[2],
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   changePwdText: { ...Typography.label, color: Colors.white, fontWeight: '700' },
   grid: { gap: Spacing[4] },

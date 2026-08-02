@@ -138,6 +138,25 @@ export function useVoiceOrder(options: UseVoiceOrderOptions) {
       const cleaned = SpeechService.normalize(text);
       if (!cleaned || processing) return;
 
+      // Ignore stop-word / noise fragments (e.g. "it", "a", "um")
+      const noiseOnly = /^(it|a|the|um|uh|ah|and|or|to|of|for|is|this|that)$/i.test(
+        cleaned.trim(),
+      );
+      if (noiseOnly) {
+        setLiveTranscript(cleaned);
+        setPhase('error');
+        onErrorRef.current?.(
+          'Heard unclear speech. Hold mic and say e.g. "5505 600 bags ORD-121".',
+        );
+        return;
+      }
+
+      if (!products.length) {
+        setPhase('error');
+        onErrorRef.current?.('Products still loading — try again in a moment.');
+        return;
+      }
+
       setProcessing(true);
       setPhase('processing');
       setProgress(12);
@@ -153,6 +172,7 @@ export function useVoiceOrder(options: UseVoiceOrderOptions) {
           dealers,
           products,
           areas,
+          preferLocal: true,
         });
 
         setProgress(100);
@@ -171,15 +191,21 @@ export function useVoiceOrder(options: UseVoiceOrderOptions) {
         onFillRef.current(result);
 
         if (result.items.length) {
+          const first = result.items[0];
+          const msg = result.couponNumber
+            ? `${first.productName} · ${first.quantity} bags · ${result.couponNumber}`
+            : result.warnings.find(w => !/customer/i.test(w)) ||
+              `Filled ${result.items.length} item(s) — enter coupon, then Place Order.`;
           onInfoRef.current?.(
-            result.needsConfirmation ? 'Review required' : 'Voice filled',
-            result.warnings[0] ||
-              `Form auto-filled via ${result.engine === 'local' ? 'offline' : 'AI'}  -  review then confirm.`,
+            result.needsConfirmation ? 'Review order' : 'Voice ready',
+            msg,
           );
         } else {
-          onErrorRef.current?.(
-            result.warnings[0] || 'Could not extract products from speech.',
-          );
+          const err =
+            result.warnings.find(w => /code|product|item|ln/i.test(w)) ||
+            result.warnings.find(w => !/customer/i.test(w)) ||
+            'Say LN code from item list, bags, coupon — e.g. "5505 600 bags ORD-121".';
+          onErrorRef.current?.(err);
           setPhase('error');
         }
       } catch (err) {

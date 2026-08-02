@@ -1,11 +1,6 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// src/hooks/useAuth.ts
-// Encapsulates all authentication logic for UI consumption.
-// Components never import from store or services directly.
-// ─────────────────────────────────────────────────────────────────────────────
 import { useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from './useRedux';
-import { loginThunk, logoutThunk } from '@store/slices/authSlice';
+import { loginThunk, logoutThunk, refreshProfileThunk } from '@store/slices/authSlice';
 import { LoginRequest } from '@types';
 
 export const useAuth = () => {
@@ -19,5 +14,7 @@ export const useAuth = () => {
 
   const logout = useCallback(() => dispatch(logoutThunk()), [dispatch]);
 
-  return { user, isAuthenticated, isLoading, accessToken, login, logout };
+  const refreshProfile = useCallback(() => dispatch(refreshProfileThunk()), [dispatch]);
+
+  return { user, isAuthenticated, isLoading, accessToken, login, logout, refreshProfile };
 };
